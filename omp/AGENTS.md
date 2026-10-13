@@ -5,6 +5,9 @@ Run every command here from `omp/`.
 ## Settings
 The plugin reads only `autolearn.enabled` and `secrets.enabled`. It hides `checkpoint` and `rewind` with `setActiveTools`, never through settings.
 
+## Session switch
+`/fold off` and `/fold on` append an `agent-fold.switch` custom entry with `{ enabled }` to the session branch. `foldEnabled` in `switch.ts` reads the branch, and the last entry wins. With the switch off, every hook acts as if the plugin were not installed and restores the `checkpoint` and `rewind` tools it hid.
+
 ## Verify
 - Run `bun run typecheck` and `bun test`.
 - `bun test` includes the mechanism tests in `evals/mechanism` that check the request reaching the provider. They run the `omp` on your PATH.

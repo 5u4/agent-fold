@@ -1,7 +1,7 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { type AssistantMessage, createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import type { Reply } from "../harness/types";
+import type { Reply, ScriptedRequest } from "../harness/types";
 
 const zeroCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -40,7 +40,8 @@ export default function scriptedProvider(pi: ExtensionAPI) {
     ],
     streamSimple(model, context) {
       const request = countLines(requestsFile);
-      appendFileSync(requestsFile, `${JSON.stringify(context.messages)}\n`);
+      const recorded: ScriptedRequest = { systemPrompt: context.systemPrompt ?? [], messages: context.messages };
+      appendFileSync(requestsFile, `${JSON.stringify(recorded)}\n`);
       const index = nextReply++;
       const reply = script[index];
       if (!reply) throw new Error(`script has no reply for request ${index} of this turn`);

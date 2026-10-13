@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Message } from "@oh-my-pi/pi-ai";
 import { runTrial } from "../harness/run-omp";
-import type { Reply, Run, Scenario, Variant } from "../harness/types";
+import type { Reply, Run, Scenario, ScriptedRequest, Variant } from "../harness/types";
 
 const compactionSettings = { thresholdTokens: 20_000, keepRecentTokens: 50, asyncEnabled: false };
 const spareReplies: Reply[] = Array.from({ length: 10 }, (_, index) => ({ text: `spare ${index}` }));
@@ -55,8 +55,8 @@ async function summaryRun(variant: Variant, secrets: boolean) {
   });
   return {
     origins: compactionOriginsPerTurn(run),
-    toolResultRequest: run.turns[0].requests[1],
-    compactionRequests: run.turns[1].requests.slice(1) as Message[][],
+    toolResultRequest: (run.turns[0].requests[1] as ScriptedRequest).messages,
+    compactionRequests: (run.turns[1].requests.slice(1) as ScriptedRequest[]).map(request => request.messages),
   };
 }
 

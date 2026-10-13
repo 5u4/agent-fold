@@ -50,6 +50,7 @@ export async function runTrial<S>(
     for (const [index, turn] of scenario.turns.entries()) {
       const scripted = typeof turn !== "string";
       const prompt = scripted ? turn.prompt : turn;
+      const commands = scripted ? (turn.commands ?? []) : [];
       const scriptFile = join(root, `script-${index}.json`);
       if (scripted) writeFileSync(scriptFile, JSON.stringify(turn.script));
       const recorder = join(FIXTURES, scripted ? "scripted-provider.ts" : "probe.ts");
@@ -72,6 +73,7 @@ export async function runTrial<S>(
           "--model",
           model,
           ...(index > 0 ? ["-c"] : []),
+          ...commands,
           prompt,
         ],
         { cwd: workdir, env, stdin: Bun.file("/dev/null"), stdout: "pipe", stderr: "pipe" },

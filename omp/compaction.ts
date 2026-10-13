@@ -2,6 +2,7 @@ import { compact, resolveThresholdTokens } from "@oh-my-pi/pi-agent-core/compact
 import type { AutoCompactionStartEvent, ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { foldSettled, foldView } from "./fold";
+import { foldOn } from "./switch";
 
 export type AutoAttempt = Pick<AutoCompactionStartEvent, "reason" | "action">;
 export type FoldedUsage = { tokens: number; threshold: number };
@@ -27,6 +28,7 @@ export function registerCompactionGate(pi: ExtensionAPI) {
     if (ctx.agent?.kind !== "main") return undefined;
     const pending = attempt;
     attempt = undefined;
+    if (!foldOn(ctx)) return undefined;
     try {
       const { preparation } = event;
       const usage = ctx.getContextUsage();
