@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "workspaces": [
+    "omp"
+  ],
+  "scripts": {
+    "format": "biome format --write .",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run --filter '*' test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15"
+  }
+}

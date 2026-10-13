@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+omp/evals/results/
+.env.test.local

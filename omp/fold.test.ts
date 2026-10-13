@@ -1,0 +1,170 @@
+import { describe, expect, test } from "bun:test";
+import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
+import { foldSettled, foldView } from "./fold";
+
+const usage = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: 0,
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+};
+
+const user = (text: string, steering?: true): AgentMessage => ({
+  role: "user",
+  content: text,
+  timestamp: 0,
+  ...(steering ? { steering } : {}),
+});
+
+const assistant = (
+  content: Extract<AgentMessage, { role: "assistant" }>["content"],
+  stopReason: "stop" | "toolUse" | "aborted" | "error" = "stop",
+): AgentMessage => ({
+  role: "assistant",
+  content,
+  api: "openai-responses",
+  provider: "openai",
+  model: "m",
+  usage,
+  stopReason,
+  timestamp: 0,
+});
+
+const call = (id: string): AgentMessage => assistant([{ type: "toolCall", id, name: "read", arguments: {} }], "toolUse");
+
+const result = (id: string): AgentMessage => ({
+  role: "toolResult",
+  toolCallId: id,
+  toolName: "read",
+  content: [{ type: "text", text: `result ${id}` }],
+  isError: false,
+  timestamp: 0,
+});
+
+const reply = (text: string): AgentMessage => assistant([{ type: "text", text }]);
+
+const summary = (text: string): AgentMessage => ({
+  role: "compactionSummary",
+  summary: text,
+  tokensBefore: 0,
+  timestamp: 0,
+});
+
+describe("foldView", () => {
+  test("folds a completed run to its user message and final reply", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("q2")]);
+  });
+
+  test("leaves the last run untouched while it is in progress", () => {
+    const messages = [user("q1"), reply("done 1"), user("q2"), call("a"), result("a")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("q2"), call("a"), result("a")]);
+  });
+
+  test("leaves the last run untouched after it completes", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1")];
+    expect(foldView(messages)).toEqual([user("q1"), call("a"), result("a"), reply("done 1")]);
+  });
+
+  test("keeps steering messages in place and does not start a run at them", () => {
+    const messages = [user("q1"), call("a"), user("steer", true), result("a"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([user("q1"), user("steer", true), reply("done 1"), user("q2")]);
+  });
+
+  test("keeps every final reply when a steering message starts a second turn", () => {
+    const messages = [
+      user("q1"),
+      call("a"),
+      result("a"),
+      reply("done 1"),
+      user("steer", true),
+      call("b"),
+      result("b"),
+      reply("done 2"),
+      user("q2"),
+    ];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("steer", true), reply("done 2"), user("q2")]);
+  });
+
+  test("treats a follow-up user message as a run boundary", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("follow-up"), call("b"), result("b")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("follow-up"), call("b"), result("b")]);
+  });
+
+  test("starts a run at a compaction summary whose tail begins mid-run", () => {
+    const messages = [summary("s"), result("a"), call("b"), result("b"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([summary("s"), reply("done 1"), user("q2")]);
+  });
+
+  test("passes messages before the first boundary through", () => {
+    const messages = [call("a"), result("a"), user("q1"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([call("a"), result("a"), user("q1"), reply("done 1"), user("q2")]);
+  });
+
+  test("leaves aborted, errored, and tool-call-ending runs untouched", () => {
+    const aborted = assistant([{ type: "text", text: "partial" }], "aborted");
+    const errored = assistant([{ type: "text", text: "partial" }], "error");
+    const messages = [
+      user("q1"),
+      call("a"),
+      result("a"),
+      aborted,
+      user("q2"),
+      call("b"),
+      result("b"),
+      errored,
+      user("q3"),
+      call("c"),
+      user("q4"),
+    ];
+    expect(foldView(messages)).toEqual([
+      user("q1"),
+      call("a"),
+      result("a"),
+      assistant([{ type: "text", text: "partial" }], "aborted"),
+      user("q2"),
+      call("b"),
+      result("b"),
+      assistant([{ type: "text", text: "partial" }], "error"),
+      user("q3"),
+      call("c"),
+      user("q4"),
+    ]);
+  });
+
+  test("strips thinking from the kept reply", () => {
+    const thinkingReply = assistant([
+      { type: "thinking", thinking: "hmm", thinkingSignature: "sig" },
+      { type: "redactedThinking", data: "opaque" },
+      { type: "text", text: "done 1" },
+    ]);
+    const messages = [user("q1"), call("a"), result("a"), thinkingReply, user("q2")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("q2")]);
+  });
+
+  test("leaves a run unfolded when its reply is thinking only", () => {
+    const thinkingOnly = assistant([{ type: "thinking", thinking: "hmm", thinkingSignature: "sig" }]);
+    const messages = [user("q1"), call("a"), result("a"), thinkingOnly, user("q2")];
+    expect(foldView(messages)).toEqual([
+      user("q1"),
+      call("a"),
+      result("a"),
+      assistant([{ type: "thinking", thinking: "hmm", thinkingSignature: "sig" }]),
+      user("q2"),
+    ]);
+  });
+});
+
+describe("foldSettled", () => {
+  test("folds the last run once it has a final reply", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("q2"), call("b"), result("b"), reply("done 2")];
+    expect(foldSettled(messages)).toEqual([user("q1"), reply("done 1"), user("q2"), reply("done 2")]);
+  });
+
+  test("leaves a last run that stopped on a tool call unfolded", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("q2"), call("b")];
+    expect(foldSettled(messages)).toEqual([user("q1"), reply("done 1"), user("q2"), call("b")]);
+  });
+});

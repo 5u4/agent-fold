@@ -1,0 +1,8 @@
+{
+  "worktree": {
+    "setup": [
+      "bun install --frozen-lockfile",
+      "if [ -f \"$PASEO_SOURCE_CHECKOUT_PATH/omp/.env.test.local\" ]; then cp \"$PASEO_SOURCE_CHECKOUT_PATH/omp/.env.test.local\" omp/.env.test.local; fi"
+    ]
+  }
+}

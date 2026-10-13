@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["bun-types"]
+  },
+  "include": ["index.ts", "fold.ts", "fold.test.ts", "compaction.ts", "compaction.test.ts", "evals/**/*.ts"]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "agent-fold",
+  "owner": { "name": "Sen Hung Wong" },
+  "plugins": [
+    {
+      "name": "agent-fold",
+      "source": "./omp",
+      "version": "0.1.0",
+      "description": "Folds each finished omp run to the user's message and the final reply, so the main context stays a clean thread of decisions."
+    }
+  ]
+}
