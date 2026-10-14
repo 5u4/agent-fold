@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
+import type { Message } from "@oh-my-pi/pi-ai";
 import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-entries";
 
 export type Variant = "without-plugin" | "with-plugin";
@@ -21,7 +22,9 @@ export type Run = { variant: Variant; turns: Turn[] };
 
 export type Verdict = { status: "pass" | "fail" | "invalid"; evidence: string };
 
-export type ScriptedTurn = { prompt: string; script: Reply[] };
+export type ScriptedTurn = { commands?: string[]; prompt: string; script: Reply[] };
+
+export type ScriptedRequest = { systemPrompt: string[]; messages: Message[] };
 
 export type Scenario<S> = {
   setup(workdir: string): Promise<S>;
