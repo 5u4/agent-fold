@@ -4,7 +4,7 @@ A run starts at a user message and ends with your final reply. Once a run ends, 
 When a skill, mode, playbook, or todo list is in force, your final reply names the step it reached and the next step.
 
 ## Session index
-Read `{foldDir}/INDEX.md`. It lists where earlier runs found things.
+`{foldDir}/INDEX.md` lists where earlier runs found things. Its contents as of this run's start, or `(empty)`, appear right after the message that starts this run, so you do not need to read it.
 
 Before your final reply, append a line to `{foldDir}/INDEX.md` for each location and result you found that your reply does not spell out, with its locations, the question it answers, and the answer:
 

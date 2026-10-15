@@ -1,4 +1,5 @@
 import type { Message } from "@oh-my-pi/pi-ai";
+import { INDEX_HEADER } from "../../session-index";
 
 export function compactMessage(message: Message): string[] {
   switch (message.role) {
@@ -18,4 +19,8 @@ export function compactMessage(message: Message): string[] {
     default:
       return [message.role];
   }
+}
+
+export function requestWithoutIndex(request: unknown): string {
+  return JSON.stringify(request, (_key, value) => (typeof value === "string" && value.startsWith(INDEX_HEADER) ? undefined : value));
 }

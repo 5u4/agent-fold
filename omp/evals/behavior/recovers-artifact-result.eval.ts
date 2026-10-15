@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createReport, evalConfig } from "../harness/eval";
 import { runTrial } from "../harness/run-omp";
 import type { Run, Scenario, Turn, Verdict } from "../harness/types";
+import { requestWithoutIndex } from "../harness/view";
 
 const MEASURE_SCRIPT = `#!/bin/bash
 set -euo pipefail
@@ -32,7 +33,7 @@ function grade(run: Run): Verdict {
   const value = measuredRuns(first).get(2);
   if (!value) return { status: "invalid", evidence: "turn-1 tool results lack a run 2 line" };
   if (first.stdout.includes(value)) return { status: "invalid", evidence: "turn-1 reply revealed the run-2 value" };
-  const valueInTurnTwoContext = JSON.stringify(second.requests[0]).includes(value);
+  const valueInTurnTwoContext = requestWithoutIndex(second.requests[0]).includes(value);
   if (run.variant === "with-plugin" && valueInTurnTwoContext)
     return { status: "invalid", evidence: "plugin did not fold the run-2 value out of turn 2's first request" };
   if (run.variant === "without-plugin" && !valueInTurnTwoContext)

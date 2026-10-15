@@ -67,9 +67,12 @@ function userText(message: Message | undefined): string {
 }
 
 function viewOf(request: Message[]): string[] {
-  return request.slice(0, -1).flatMap(message => {
+  return request.flatMap(message => {
     if (message.role === "toolResult") return [`toolResult:${message.toolName}`];
-    if (message.role === "user") return [`user:${userText(message).split("</system-reminder>").at(-1)}`];
+    if (message.role === "user") {
+      const text = userText(message).split("</system-reminder>").at(-1) ?? "";
+      return [text.startsWith("<critical>\nWrite a handoff document") ? "handoff prompt" : `user:${text}`];
+    }
     if (message.role !== "assistant") return [message.role];
     return message.content.flatMap(block => {
       if (block.type === "text") return [`assistant:text:${block.text}`];
@@ -115,6 +118,7 @@ test("without the plugin, native handoff compaction sends the unfolded tool resu
       "assistant:text:done 1",
       "user:q2 anything",
       "assistant:text:done 2",
+      "handoff prompt",
     ],
   ]);
   expect(compactionRequests.map(carriesNonce)).toEqual([true]);
@@ -125,7 +129,7 @@ test("with secrets enabled, the plugin leaves compaction to native handoff, whic
   expect(origins).toEqual([[], [false]]);
   expect(carriesNonce(toolResultRequest)).toBe(true);
   expect(compactionRequests.map(viewOf)).toEqual([
-    ["user:q1 read nonce.txt", "assistant:text:done 1", "user:q2 anything", "assistant:text:done 2"],
+    ["user:q1 read nonce.txt", "assistant:text:done 1", "user:q2 anything", "developer", "assistant:text:done 2", "handoff prompt"],
   ]);
   expect(compactionRequests.map(carriesNonce)).toEqual([false]);
 }, 120_000);

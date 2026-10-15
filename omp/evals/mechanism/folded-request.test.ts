@@ -22,7 +22,7 @@ async function turnTwoView(variant: Variant): Promise<string[]> {
 }
 
 test("the plugin sends run 1 to the provider as its user message and final reply", async () => {
-  expect(await turnTwoView("with-plugin")).toEqual(["user:q1 read nonce.txt", "assistant:text:done 1", "user:q2 anything"]);
+  expect(await turnTwoView("with-plugin")).toEqual(["user:q1 read nonce.txt", "assistant:text:done 1", "user:q2 anything", "developer"]);
 }, 120_000);
 
 test("without the plugin, run 1 reaches the provider unfolded", async () => {

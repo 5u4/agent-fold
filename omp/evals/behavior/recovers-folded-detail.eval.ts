@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createReport, evalConfig } from "../harness/eval";
 import { runTrial } from "../harness/run-omp";
 import type { Run, Scenario, Turn, Verdict } from "../harness/types";
+import { requestWithoutIndex } from "../harness/view";
 
 function toolCallCount(turn: Turn): number {
   return turn.messages.flatMap(message => (message.role === "assistant" ? message.content : [])).filter(block => block.type === "toolCall")
@@ -16,7 +17,7 @@ function grade(run: Run, { nonce }: { nonce: string }): Verdict {
   if (!first.requests.some(request => JSON.stringify(request).includes(nonce)))
     return { status: "invalid", evidence: "turn 1 never sent the nonce to the model" };
   if (first.stdout.includes(nonce)) return { status: "invalid", evidence: "turn-1 reply revealed the nonce" };
-  const nonceInTurnTwoContext = JSON.stringify(second.requests[0]).includes(nonce);
+  const nonceInTurnTwoContext = requestWithoutIndex(second.requests[0]).includes(nonce);
   if (run.variant === "with-plugin" && nonceInTurnTwoContext)
     return { status: "invalid", evidence: "plugin did not fold the nonce out of turn 2's first request" };
   if (run.variant === "without-plugin" && !nonceInTurnTwoContext)

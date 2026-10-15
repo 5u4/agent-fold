@@ -23,12 +23,12 @@ function foldRun(run: AgentMessage[]): AgentMessage[] {
   return [run[0], ...kept];
 }
 
+export function startsRun(message: AgentMessage): boolean {
+  return message.role === "user" ? message.steering !== true : message.role === "compactionSummary" || message.role === "branchSummary";
+}
+
 function foldRuns(messages: AgentMessage[], foldLast: boolean): AgentMessage[] {
-  const starts = messages.flatMap((message, index) => {
-    const isBoundary =
-      message.role === "user" ? message.steering !== true : message.role === "compactionSummary" || message.role === "branchSummary";
-    return isBoundary ? [index] : [];
-  });
+  const starts = messages.flatMap((message, index) => (startsRun(message) ? [index] : []));
   const folded = foldLast ? starts.length : starts.length - 1;
   if (folded < 1) return messages;
   const ends = [...starts.slice(1), messages.length];

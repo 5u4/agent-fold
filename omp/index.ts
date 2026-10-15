@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { registerCompactionGate } from "./compaction";
 import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
-import { foldView } from "./fold";
+import { foldView, startsRun } from "./fold";
+import { capIndex, type IndexSnapshot, withSessionIndex } from "./session-index";
 import { foldOn, registerFoldCommand } from "./switch";
 
 const FOLD_RULES = readFileSync(join(import.meta.dir, "context", "fold.md"), "utf8");
@@ -17,6 +18,7 @@ const FOLD_HOME = process.env.AGENT_FOLD_HOME || join(homedir(), ".agent-fold");
 export default function foldIn(pi: ExtensionAPI) {
   const settings = pi.pi.settings;
   const hiddenTools = new Set<string>();
+  let snapshot: (IndexSnapshot & { anchor?: number }) | undefined;
 
   async function syncCheckpointTools(enabled: boolean) {
     const active = pi.getActiveTools();
@@ -42,7 +44,10 @@ export default function foldIn(pi: ExtensionAPI) {
   pi.on("context", async (event, ctx) => {
     if (ctx.agent?.kind !== "main" || !foldOn(ctx)) return undefined;
     try {
-      return { messages: foldView(event.messages) };
+      const view = foldView(event.messages);
+      if (!snapshot) return { messages: view };
+      snapshot.anchor ??= view.findLast(startsRun)?.timestamp;
+      return { messages: snapshot.anchor === undefined ? view : withSessionIndex(view, snapshot, snapshot.anchor) };
     } catch {
       return undefined;
     }
@@ -50,6 +55,7 @@ export default function foldIn(pi: ExtensionAPI) {
 
   pi.on("before_agent_start", async (event, ctx) => {
     if (ctx.agent?.kind !== "main") return undefined;
+    snapshot = undefined;
     const enabled = foldOn(ctx);
     await syncCheckpointTools(enabled);
     if (!enabled) return undefined;
@@ -58,6 +64,8 @@ export default function foldIn(pi: ExtensionAPI) {
       if (!rootEntry) return undefined;
       const dir = foldDir({ foldHome: FOLD_HOME, projectRoot: await findProjectRoot(ctx.cwd), rootEntry });
       await mkdir(dir, { recursive: true }).catch(() => undefined);
+      const text = await readFile(join(dir, "INDEX.md"), "utf8").catch(() => "");
+      snapshot = { dir, text: capIndex(text) };
       const managedSkills =
         lookup("autolearn.enabled")?.get(settings) === true && pi.getAllTools().some(tool => tool.name === "manage_skill");
       const rules = managedSkills ? `${FOLD_RULES}\n${MANAGED_SKILL_RULES}` : FOLD_RULES;
