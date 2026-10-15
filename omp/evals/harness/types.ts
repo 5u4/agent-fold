@@ -18,9 +18,11 @@ export type Turn = {
   entries: SessionEntry[];
 };
 
-export type Run = { variant: Variant; turns: Turn[] };
+export type Run = { variant: Variant; foldHome: string; turns: Turn[] };
 
 export type Verdict = { status: "pass" | "fail" | "invalid"; evidence: string };
+
+export const FOLD_DIR = "<fold-dir>";
 
 export type ScriptedTurn = { commands?: string[]; prompt: string; script: Reply[] };
 

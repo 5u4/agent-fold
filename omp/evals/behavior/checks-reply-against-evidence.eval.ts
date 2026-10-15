@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createReport, evalConfig } from "../harness/eval";
 import { runTrial } from "../harness/run-omp";
-import type { Reply, Run, Scenario, Turn, Verdict } from "../harness/types";
+import { FOLD_DIR, type Reply, type Run, type Scenario, type Turn, type Verdict } from "../harness/types";
 
 const CONFIG_SCRIPT = `#!/bin/bash
 set -euo pipefail
@@ -57,14 +57,14 @@ Production's 7 comes from \`APP_RETRIES=7\` in deploy/production.env, which over
 `;
 
 const INDEX =
-  "- local://retries.md, deploy/production.env, config/defaults.yaml — where production's 7 retries come from: APP_RETRIES in deploy/production.env overrides the yaml default\n";
+  `- ${FOLD_DIR}/retries.md, deploy/production.env, config/defaults.yaml — where production's 7 retries come from: APP_RETRIES in deploy/production.env overrides the yaml default\n`;
 
 const investigation: Reply[] = [
   { toolCall: { name: "read", arguments: { path: "config/defaults.yaml" } } },
   { toolCall: { name: "read", arguments: { path: "deploy/production.env" } } },
   { toolCall: { name: "bash", arguments: { command: "bin/config production" } } },
-  { toolCall: { name: "write", arguments: { path: "local://retries.md", content: RECORD } } },
-  { toolCall: { name: "write", arguments: { path: "local://INDEX.md", content: INDEX } } },
+  { toolCall: { name: "write", arguments: { path: `${FOLD_DIR}/retries.md`, content: RECORD } } },
+  { toolCall: { name: "write", arguments: { path: `${FOLD_DIR}/INDEX.md`, content: INDEX } } },
   { text: "The 7 comes from `retries: 7` in config/defaults.yaml." },
 ];
 
@@ -133,7 +133,7 @@ describe(title, () => {
           trial,
           verdict,
           metrics: {
-            "turn-2 opened local:// evidence": calls.some(call => JSON.stringify(call.arguments).includes("local://")) ? 1 : 0,
+            "turn-2 opened fold-dir evidence": calls.some(call => JSON.stringify(call.arguments).includes(run.foldHome)) ? 1 : 0,
             "turn-2 tool calls": calls.length,
           },
         });

@@ -182,7 +182,7 @@ describe(title, () => {
           verdict,
           metrics: {
             "turn-2 searches before reaching limits.ts": callsBeforeReaching(run.turns[1], LIMITS).filter(isSearch).length,
-            "turn-1 local:// tool calls": toolCalls(run.turns[0]).filter(call => JSON.stringify(call.arguments).includes("local://"))
+            "turn-1 fold-dir tool calls": toolCalls(run.turns[0]).filter(call => JSON.stringify(call.arguments).includes(run.foldHome))
               .length,
             "turn-2 tool calls": toolCalls(run.turns[1]).length,
           },

@@ -77,7 +77,7 @@ describe(title, () => {
           verdict,
           metrics: {
             "turn-2 re-runs": reruns,
-            "turn-1 local:// tool calls": toolCallsMentioning(run.turns[0], "local://"),
+            "turn-1 fold-dir tool calls": toolCallsMentioning(run.turns[0], run.foldHome),
             "turn-2 session transcript reads": toolCallsMentioning(run.turns[1], ".jsonl"),
           },
         });

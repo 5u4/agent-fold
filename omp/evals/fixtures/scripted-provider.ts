@@ -1,7 +1,8 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { type AssistantMessage, createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import type { Reply, ScriptedRequest } from "../harness/types";
+import { FOLD_DIR, type Reply, type ScriptedRequest } from "../harness/types";
 
 const zeroCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -16,6 +17,15 @@ function countLines(file: string): number {
   return readFileSync(file, "utf8")
     .split("\n")
     .filter(line => line !== "").length;
+}
+
+function foldDirIn(systemPrompt: string[], foldHome: string | undefined): string | undefined {
+  if (!foldHome) return undefined;
+  const text = systemPrompt.join("\n");
+  const start = text.indexOf(`${foldHome}/`);
+  if (start === -1) return undefined;
+  const segments = text.slice(start + foldHome.length + 1).match(/^([^/\s`]+)\/([^/\s`]+)/);
+  return segments ? join(foldHome, segments[1], segments[2]) : undefined;
 }
 
 export default function scriptedProvider(pi: ExtensionAPI) {
@@ -43,8 +53,12 @@ export default function scriptedProvider(pi: ExtensionAPI) {
       const recorded: ScriptedRequest = { systemPrompt: context.systemPrompt ?? [], messages: context.messages };
       appendFileSync(requestsFile, `${JSON.stringify(recorded)}\n`);
       const index = nextReply++;
-      const reply = script[index];
-      if (!reply) throw new Error(`script has no reply for request ${index} of this turn`);
+      const scripted = script[index];
+      if (!scripted) throw new Error(`script has no reply for request ${index} of this turn`);
+      const foldDir = foldDirIn(recorded.systemPrompt, process.env.AGENT_FOLD_HOME);
+      const reply: Reply = JSON.parse(
+        JSON.stringify(scripted).replaceAll(`${FOLD_DIR}/`, foldDir ? `${foldDir}/` : "local://"),
+      );
       const stopReason = "text" in reply ? "stop" : "toolUse";
       const message: AssistantMessage = {
         role: "assistant",

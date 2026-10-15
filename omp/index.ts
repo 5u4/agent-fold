@@ -1,14 +1,18 @@
 import { readFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { registerCompactionGate } from "./compaction";
+import { findProjectRoot, foldDir } from "./fold-dir";
 import { foldView } from "./fold";
 import { foldOn, registerFoldCommand } from "./switch";
 
 const FOLD_RULES = readFileSync(join(import.meta.dir, "context", "fold.md"), "utf8");
 const MANAGED_SKILL_RULES = readFileSync(join(import.meta.dir, "context", "managed-skills.md"), "utf8");
 const HIDDEN_TOOLS: Record<string, true> = { checkpoint: true, rewind: true };
+const FOLD_HOME = process.env.AGENT_FOLD_HOME || join(homedir(), ".agent-fold");
 
 export default function foldIn(pi: ExtensionAPI) {
   const settings = pi.pi.settings;
@@ -49,9 +53,17 @@ export default function foldIn(pi: ExtensionAPI) {
     const enabled = foldOn(ctx);
     await syncCheckpointTools(enabled);
     if (!enabled) return undefined;
-    const managedSkills =
-      lookup("autolearn.enabled")?.get(settings) === true && pi.getAllTools().some(tool => tool.name === "manage_skill");
-    const rules = managedSkills ? `${FOLD_RULES}\n${MANAGED_SKILL_RULES}` : FOLD_RULES;
-    return { systemPrompt: [...event.systemPrompt, rules] };
+    try {
+      const rootEntry = ctx.sessionManager.getBranch()[0];
+      if (!rootEntry) return undefined;
+      const dir = foldDir({ foldHome: FOLD_HOME, projectRoot: await findProjectRoot(ctx.cwd), rootEntry });
+      await mkdir(dir, { recursive: true }).catch(() => undefined);
+      const managedSkills =
+        lookup("autolearn.enabled")?.get(settings) === true && pi.getAllTools().some(tool => tool.name === "manage_skill");
+      const rules = managedSkills ? `${FOLD_RULES}\n${MANAGED_SKILL_RULES}` : FOLD_RULES;
+      return { systemPrompt: [...event.systemPrompt, rules.replaceAll("{foldDir}", dir)] };
+    } catch {
+      return undefined;
+    }
   });
 }
