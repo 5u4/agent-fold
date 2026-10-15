@@ -16,7 +16,7 @@ test("the fold dir joins the fold home, project slug, and the root entry's UTC s
       projectRoot: join(homedir(), "Workspaces", "explain-this"),
       rootEntry: { id: "a96b385f", timestamp: "2026-10-14T23:27:38.834Z" },
     }),
-  ).toBe("/fold-home/-Workspaces-explain-this/20261014232738-a96b385f");
+  ).toBe("/fold-home/-Workspaces-explain-this/omp/20261014232738-a96b385f");
 });
 
 test("worktrees of one repo share the main checkout's slug, and a dir outside git uses its own", async () => {

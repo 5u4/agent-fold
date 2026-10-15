@@ -24,8 +24,8 @@ function foldDirIn(systemPrompt: string[], foldHome: string | undefined): string
   const text = systemPrompt.join("\n");
   const start = text.indexOf(`${foldHome}/`);
   if (start === -1) return undefined;
-  const segments = text.slice(start + foldHome.length + 1).match(/^([^/\s`]+)\/([^/\s`]+)/);
-  return segments ? join(foldHome, segments[1], segments[2]) : undefined;
+  const segments = text.slice(start + foldHome.length + 1).match(/^([^/\s`]+)\/([^/\s`]+)\/([^/\s`]+)/);
+  return segments ? join(foldHome, segments[1], segments[2], segments[3]) : undefined;
 }
 
 export default function scriptedProvider(pi: ExtensionAPI) {

@@ -5,13 +5,15 @@ export type RootEntry = { id: string; timestamp: string };
 
 export type FoldDirInput = { foldHome: string; projectRoot: string; rootEntry: RootEntry };
 
+const AGENT = "omp";
+
 export function projectSlug(projectRoot: string): string {
   return basename(sessionDirForCwd(projectRoot, "/"));
 }
 
 export function foldDir({ foldHome, projectRoot, rootEntry }: FoldDirInput): string {
   const startedAt = new Date(rootEntry.timestamp).toISOString().replace(/\D/g, "").slice(0, 14);
-  return join(foldHome, projectSlug(projectRoot), `${startedAt}-${rootEntry.id}`);
+  return join(foldHome, projectSlug(projectRoot), AGENT, `${startedAt}-${rootEntry.id}`);
 }
 
 export function withFoldDir(rules: string, dir: string): string {
