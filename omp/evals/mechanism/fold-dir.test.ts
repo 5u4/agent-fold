@@ -37,6 +37,10 @@ test("both runs of a continued session get the same fold dir, created before run
   const expected = join(run.foldHome, `-tmp-${basename(dirname(run.foldHome))}-workdir`, "omp", `${startedAt}-${rootEntry.id}`);
   const systemPrompts = run.turns.map(turn => (turn.requests[0] as ScriptedRequest).systemPrompt.join("\n"));
   expect(systemPrompts.map(prompt => prompt.includes(`${expected}/`))).toEqual([true, true]);
+  const writePaths = run.turns[0].messages
+    .flatMap(message => (message.role === "assistant" ? message.content : []))
+    .flatMap(block => (block.type === "toolCall" && block.name === "write" ? [block.arguments.path] : []));
+  expect(writePaths).toEqual([`${expected}/note.md`]);
   expect(toolResultText(run.turns[0])).toContain("fold-dir-exists");
   expect(toolResultText(run.turns[1])).toContain("NOTE-kept");
 }, 120_000);
