@@ -34,7 +34,7 @@ test("both runs of a continued session get the same fold dir, created before run
   const rootEntry = run.turns[0].entries.find(entry => entry.parentId === null);
   if (!rootEntry) throw new Error("turn 1 wrote no branch root entry");
   const startedAt = rootEntry.timestamp.replace(/\D/g, "").slice(0, 14);
-  const expected = join(run.foldHome, `-tmp-${basename(dirname(run.foldHome))}-workdir`, `${startedAt}-${rootEntry.id}`);
+  const expected = join(run.foldHome, `-tmp-${basename(dirname(run.foldHome))}-workdir`, "omp", `${startedAt}-${rootEntry.id}`);
   const systemPrompts = run.turns.map(turn => (turn.requests[0] as ScriptedRequest).systemPrompt.join("\n"));
   expect(systemPrompts.map(prompt => prompt.includes(`${expected}/`))).toEqual([true, true]);
   expect(toolResultText(run.turns[0])).toContain("fold-dir-exists");
