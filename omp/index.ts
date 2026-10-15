@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { registerCompactionGate } from "./compaction";
-import { findProjectRoot, foldDir } from "./fold-dir";
+import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
 import { foldView } from "./fold";
 import { foldOn, registerFoldCommand } from "./switch";
 
@@ -61,7 +61,7 @@ export default function foldIn(pi: ExtensionAPI) {
       const managedSkills =
         lookup("autolearn.enabled")?.get(settings) === true && pi.getAllTools().some(tool => tool.name === "manage_skill");
       const rules = managedSkills ? `${FOLD_RULES}\n${MANAGED_SKILL_RULES}` : FOLD_RULES;
-      return { systemPrompt: [...event.systemPrompt, rules.replaceAll("{foldDir}", dir)] };
+      return { systemPrompt: [...event.systemPrompt, withFoldDir(rules, dir)] };
     } catch {
       return undefined;
     }

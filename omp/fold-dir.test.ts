@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { findProjectRoot, foldDir, projectSlug } from "./fold-dir";
+import { findProjectRoot, foldDir, projectSlug, withFoldDir } from "./fold-dir";
 
 function git(cwd: string, ...args: string[]) {
   const proc = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, stderr: "pipe" });
@@ -37,4 +37,32 @@ test("worktrees of one repo share the main checkout's slug, and a dir outside gi
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("a checkout whose git dir lives elsewhere uses its own top level", async () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "fold-dir-")));
+  try {
+    const lib = join(root, "lib");
+    const sep = join(root, "sep");
+    mkdirSync(lib);
+    git(lib, "init", "-q");
+    git(lib, "commit", "-q", "--allow-empty", "-m", "init");
+    git(root, "init", "-q", "--separate-git-dir", join(root, "sepgit"), sep);
+    git(sep, "commit", "-q", "--allow-empty", "-m", "init");
+    git(sep, "-c", "protocol.file.allow=always", "submodule", "add", "-q", lib, "vendored");
+    mkdirSync(join(sep, "src"));
+    mkdirSync(join(sep, "vendored", "src"));
+    for (const cwd of [sep, join(sep, "src")]) expect(await findProjectRoot(cwd)).toBe(sep);
+    for (const cwd of [join(sep, "vendored"), join(sep, "vendored", "src")]) {
+      expect(await findProjectRoot(cwd)).toBe(join(sep, "vendored"));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the fold dir goes into the rules verbatim, even with replacement patterns in it", () => {
+  expect(withFoldDir("read {foldDir}/INDEX.md, write {foldDir}/x.md", "/home/$&/$1-fold")).toBe(
+    "read /home/$&/$1-fold/INDEX.md, write /home/$&/$1-fold/x.md",
+  );
 });
