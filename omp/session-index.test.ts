@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
-import { withSessionIndex } from "./session-index";
+import { capIndex, withSessionIndex } from "./session-index";
 
 const user = (text: string, timestamp: number, steering?: true): AgentMessage => ({
   role: "user",
@@ -76,5 +76,28 @@ describe("withSessionIndex", () => {
     const messages = [user("q2", 2), result("a")];
     withSessionIndex(messages, snapshot, 2);
     expect(messages).toEqual([user("q2", 2), result("a")]);
+  });
+});
+
+describe("capIndex", () => {
+  const lines = (count: number, width = 1) => Array.from({ length: count }, (_, i) => `${i + 1}`.padEnd(width, "x"));
+
+  test("keeps exactly 300 lines unchanged", () => {
+    const text = `${lines(300).join("\n")}\n`;
+    expect(capIndex(text)).toBe(text);
+  });
+
+  test("cuts at the line cap and names the next line", () => {
+    const text = `${lines(301).join("\n")}\n`;
+    expect(capIndex(text)).toBe(`${lines(300).join("\n")}\n[INDEX.md continues at line 301. Read it from that line for the rest.]`);
+  });
+
+  test("cuts at the byte cap before the line cap", () => {
+    const text = lines(3, 60000).join("\n");
+    expect(capIndex(text)).toBe(`${lines(2, 60000).join("\n")}\n[INDEX.md continues at line 3. Read it from that line for the rest.]`);
+  });
+
+  test("keeps nothing when the first line exceeds the byte cap", () => {
+    expect(capIndex(`${"x".repeat(153601)}\nshort\n`)).toBe("[INDEX.md continues at line 1. Read it from that line for the rest.]");
   });
 });

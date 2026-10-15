@@ -7,7 +7,7 @@ import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { registerCompactionGate } from "./compaction";
 import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
 import { foldView, startsRun } from "./fold";
-import { type IndexSnapshot, withSessionIndex } from "./session-index";
+import { capIndex, type IndexSnapshot, withSessionIndex } from "./session-index";
 import { foldOn, registerFoldCommand } from "./switch";
 
 const FOLD_RULES = readFileSync(join(import.meta.dir, "context", "fold.md"), "utf8");
@@ -65,7 +65,7 @@ export default function foldIn(pi: ExtensionAPI) {
       const dir = foldDir({ foldHome: FOLD_HOME, projectRoot: await findProjectRoot(ctx.cwd), rootEntry });
       await mkdir(dir, { recursive: true }).catch(() => undefined);
       const text = await readFile(join(dir, "INDEX.md"), "utf8").catch(() => "");
-      snapshot = { dir, text };
+      snapshot = { dir, text: capIndex(text) };
       const managedSkills =
         lookup("autolearn.enabled")?.get(settings) === true && pi.getAllTools().some(tool => tool.name === "manage_skill");
       const rules = managedSkills ? `${FOLD_RULES}\n${MANAGED_SKILL_RULES}` : FOLD_RULES;
