@@ -62,7 +62,7 @@ test("/fold off sends the session as without the plugin until /fold on", async (
   const { run } = await runTrial(scenario, { variant: "with-plugin", model: "scripted/scripted", settings });
   expect(observed(run)).toEqual([
     {
-      view: ["user:q1"],
+      view: ["user:q1", "developer"],
       foldRules: true,
       checkpointDispatch: ["No such tool", "No such tool"],
       switchEntries: [],
@@ -80,7 +80,7 @@ test("/fold off sends the session as without the plugin until /fold on", async (
       switchEntries: [],
     },
     {
-      view: [...folded(1), ...folded(2), ...folded(3), "user:q4"],
+      view: [...folded(1), ...folded(2), ...folded(3), "user:q4", "developer"],
       foldRules: true,
       checkpointDispatch: ["No such tool", "No such tool"],
       switchEntries: [{ enabled: true }],

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createReport, providerModels } from "../harness/eval";
 import { runTrial } from "../harness/run-omp";
 import type { Run, Scenario, Turn, Verdict } from "../harness/types";
+import { requestWithoutIndex } from "../harness/view";
 
 function providerError(turn: Turn): string | undefined {
   return turn.messages.flatMap(message =>
@@ -26,7 +27,7 @@ function grade(run: Run, { nonce }: { nonce: string }): Verdict {
   if (firstError !== undefined) return { status: "invalid", evidence: `turn 1 ended in a provider error: ${firstError}` };
   if (!first.requests.some(request => JSON.stringify(request).includes(nonce)))
     return { status: "invalid", evidence: "turn 1 never sent the nonce to the model" };
-  if (JSON.stringify(second.requests[0]).includes(nonce))
+  if (requestWithoutIndex(second.requests[0]).includes(nonce))
     return { status: "invalid", evidence: "plugin did not fold the nonce out of turn 2's first request" };
   const secondError = providerError(second);
   return secondError === undefined
