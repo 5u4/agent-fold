@@ -41,6 +41,7 @@ export async function runTrial<S>(
     const workdir = join(root, "workdir");
     const sessions = join(root, "sessions");
     const requestsFile = join(root, "requests.jsonl");
+    const foldHome = join(root, "fold-home");
     mkdirSync(workdir);
     mkdirSync(sessions);
     const plugin = opts.variant === "with-plugin" ? ["-e", join(REPO, "index.ts")] : [];
@@ -55,7 +56,7 @@ export async function runTrial<S>(
       if (scripted) writeFileSync(scriptFile, JSON.stringify(turn.script));
       const recorder = join(FIXTURES, scripted ? "scripted-provider.ts" : "probe.ts");
       const model = scripted ? "scripted/scripted" : opts.model;
-      const env = { ...process.env, FOLD_EVAL_REQUESTS: requestsFile, FOLD_EVAL_SCRIPT: scriptFile };
+      const env = { ...process.env, AGENT_FOLD_HOME: foldHome, FOLD_EVAL_REQUESTS: requestsFile, FOLD_EVAL_SCRIPT: scriptFile };
       const requestsBefore = readLines(requestsFile).length;
       const entriesBefore = readSessionEntries(sessions).length;
       const proc = Bun.spawn(
@@ -96,7 +97,7 @@ export async function runTrial<S>(
       });
     }
     const state = scenario.inspect ? await scenario.inspect(workdir, setupState) : setupState;
-    return { run: { variant: opts.variant, turns }, state };
+    return { run: { variant: opts.variant, foldHome, turns }, state };
   } finally {
     rmSync(profile.dir, { recursive: true, force: true });
     rmSync(root, { recursive: true, force: true });

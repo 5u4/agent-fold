@@ -7,7 +7,7 @@ Managed skills hold two kinds of knowledge, each costing more to rediscover than
 Each change is the smallest edit that carries the new knowledge. Write each pitfall as the correct action: "When <trigger>, do <action>, because <reason>."
 
 Every skill change, create or update:
-1. Snapshot first: copy `skill://<name>` to `local://skill-snapshots/<name>-<n>.md` and add its INDEX line; for a new skill, the INDEX line records that revert means `delete`.
+1. Snapshot first: copy `skill://<name>` to `{foldDir}/skill-snapshots/<name>-<n>.md` and add its INDEX line; for a new skill, the INDEX line records that revert means `delete`.
 2. Apply the change with `manage_skill`.
 3. Name the change in your final reply: skill name, what changed, snapshot path.
 
