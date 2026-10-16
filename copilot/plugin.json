@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-fold",
+  "description": "Folds each finished GitHub Copilot CLI run to the user's message and the final reply, so the main context stays a clean thread of decisions.",
+  "version": "0.1.0"
+}

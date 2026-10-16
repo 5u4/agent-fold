@@ -1,0 +1,170 @@
+{
+  "model": "gpt-5.4-mini",
+  "instructions": "You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are an interactive tool that helps users with …",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<current_datetime>2026-10-15T22:30:21.992-07:00</current_datetime>\n\nStep by step, one shell command per tool call, never…"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<system_reminder>\nIMPORTANT: The tools listed below are deferred — their full definitions are NOT loaded, so you cannot …"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "content": [],
+      "encrypted_content": "+JuXwC8uTtiviXart72A/nSW…",
+      "id": "7TtrhlKlNyysfZGpY9g25zENoSAWQ7Cyl09D6/2g9gjD5oTTvJQnS81E13xjmUdepbhR5E56H5IJKjpUV0QholBmvIfbHeDq8o8bwsNlqHigMSEauryEeLrx…",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_W93BxscPGMwayzYJWEBYA9BR",
+      "name": "bash",
+      "arguments": "{\"command\":\"cat data.txt\",\"description\":\"Print data.txt\",\"mode\":\"sync\",\"initial_wait\":30}",
+      "call_id": "call_W93BxscPGMwayzYJWEBYA9BR",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_W93BxscPGMwayzYJWEBYA9BR",
+      "output": "<command with shellId: 0 moved to background by the user. You will be automatically notified when it completes. The user…"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "STEER-E: also run echo steered as a final extra command."
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<system_notification>\nShell command \"Print data.txt\" (shellId: 0) has completed successfully.\n</system_notification>"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_d4dc1b9c-67e4-47fd-8914-077fd029d490",
+      "name": "read_bash",
+      "arguments": "{\"shellId\":\"0\",\"delay\":0}",
+      "call_id": "d4dc1b9c-67e4-47fd-8914-077fd029d490",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "d4dc1b9c-67e4-47fd-8914-077fd029d490",
+      "output": "tok-39110-36363\n<shellId: 0 completed with exit code 0>"
+    },
+    {
+      "content": [],
+      "encrypted_content": "hII+ArKV9dSTkI8Mlr5hrm1z…",
+      "id": "eUhlhNKIjJkS+1fCmitMtZxSWKxGlmTpZ5m9zhI3p6W3wWkeDaIvh1JXjPVqn1dTecrk/nIaeHi1QQCsy4YMhpqeNQjirB6f+DvK7d2tbomeN8o3YpFMMNze…",
+      "summary": [],
+      "type": "reasoning"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_sibfwJ6xkKGUBR8y2IsfMUIP",
+      "name": "bash",
+      "arguments": "{\"command\":\"sleep 10\",\"description\":\"Sleep for 10 seconds\",\"mode\":\"sync\",\"initial_wait\":30}",
+      "call_id": "call_sibfwJ6xkKGUBR8y2IsfMUIP",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_sibfwJ6xkKGUBR8y2IsfMUIP",
+      "output": "\n<shellId: 1 completed with exit code 0>"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_xwRlnEwVQTZhiSuf79GDe87v",
+      "name": "bash",
+      "arguments": "{\"command\":\"ls\",\"description\":\"List directory contents\",\"mode\":\"sync\",\"initial_wait\":30}",
+      "call_id": "call_xwRlnEwVQTZhiSuf79GDe87v",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_xwRlnEwVQTZhiSuf79GDe87v",
+      "output": "an.py\ndata.txt\ne.sh\norig\nREADME.md\nruns\nto.sh\n<shellId: 2 completed with exit code 0>"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_9rzYEeivMXtXh3hv8nVuO7xx",
+      "name": "bash",
+      "arguments": "{\"command\":\"echo four\",\"description\":\"Echo four\",\"mode\":\"sync\",\"initial_wait\":30}",
+      "call_id": "call_9rzYEeivMXtXh3hv8nVuO7xx",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_9rzYEeivMXtXh3hv8nVuO7xx",
+      "output": "four\n<shellId: 3 completed with exit code 0>"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_7FrYysOq4cKRwGY2fKXQPPm3",
+      "name": "bash",
+      "arguments": "{\"command\":\"echo steered\",\"description\":\"Echo steered\",\"mode\":\"sync\",\"initial_wait\":30}",
+      "call_id": "call_7FrYysOq4cKRwGY2fKXQPPm3",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_7FrYysOq4cKRwGY2fKXQPPm3",
+      "output": "steered\n<shellId: 4 completed with exit code 0>"
+    },
+    {
+      "type": "message",
+      "id": "msg_46efaebf-1f8e-f7d5-b2cc-b83b25c5df36",
+      "role": "assistant",
+      "content": [
+        {
+          "annotations": [],
+          "type": "output_text",
+          "text": "done"
+        }
+      ],
+      "status": "completed",
+      "phase": "final_answer"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<current_datetime>2026-10-15T22:31:22.674-07:00</current_datetime>\n\nUse a shell command to run: echo second-run. Then re…"
+        }
+      ],
+      "type": "message"
+    }
+  ],
+  "reasoning": {
+    "effort": "medium",
+    "summary": "auto"
+  },
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"],
+  "parallel_tool_calls": true
+}

@@ -1,7 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "omp"
+    "omp",
+    "copilot"
   ],
   "scripts": {
     "format": "biome format --write .",
