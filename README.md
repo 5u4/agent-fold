@@ -26,3 +26,21 @@ Restart omp to load the plugin.
 omp plugin uninstall agent-fold@agent-fold
 omp plugin marketplace remove agent-fold
 ```
+
+### GitHub Copilot CLI
+
+```sh
+copilot plugin marketplace add 5u4/agent-fold
+copilot plugin install agent-fold@agent-fold
+```
+
+The plugin runs as an extension, an experimental Copilot CLI feature. Start `copilot --experimental`, or run `/settings experimental on` and restart Copilot.
+
+Only the session Copilot starts with is folded. After `/clear`, `/new`, `/resume`, or `/fork`, restart Copilot. To fold a saved session, start it with `copilot --session-id <id>`, not `--resume` or `--continue`.
+
+#### Uninstall
+
+```sh
+copilot plugin uninstall agent-fold@agent-fold
+copilot plugin marketplace remove agent-fold
+```
