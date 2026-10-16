@@ -1,0 +1,69 @@
+{
+  "model": "gpt-5.4",
+  "instructions": "You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are an interactive tool that helps users with …",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Some of the conversation history has been summarized to free up context.\n\nYou were originally given instructions from a …"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<current_datetime>2026-10-13T12:32:37.455-07:00</current_datetime>\n\nPost-compaction turn: use a tool to read config.txt …"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<system_reminder>\nIMPORTANT: The tools listed below are deferred — their full definitions are NOT loaded, so you cannot …"
+        }
+      ],
+      "type": "message"
+    },
+    {
+      "content": [],
+      "encrypted_content": "R8LdWRkObh/gKGa7p5kzqYlj…",
+      "id": "+m+006QqSD/Wp8drTL2aK0T5c/aPd6X5zcx6Y7hNv8H5keM++X6pyBQzdi8MSbNv4Oc/GL33Y1zhsvIEVYacS0ed458iker63FO+4XdS8e+wysdxeTJcVeEt…",
+      "summary": [
+        {
+          "text": "**Using tools for configuration**\n\nI need to get an answer that involves using a tool to read a config.txt file. I think…",
+          "type": "summary_text"
+        }
+      ],
+      "type": "reasoning"
+    },
+    {
+      "type": "function_call",
+      "id": "fc_call_NFlJlzoTtw0wCh3ZkSoDraio",
+      "name": "view",
+      "arguments": "{\"path\":\"/private/tmp/fold-probe-a/config.txt\"}",
+      "call_id": "call_NFlJlzoTtw0wCh3ZkSoDraio",
+      "status": "completed"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_NFlJlzoTtw0wCh3ZkSoDraio",
+      "output": "mode=fast\nretries=3\ncolor=blue\n"
+    }
+  ],
+  "reasoning": {
+    "effort": "medium",
+    "summary": "auto"
+  },
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"],
+  "parallel_tool_calls": true
+}

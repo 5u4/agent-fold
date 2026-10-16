@@ -1,0 +1,16 @@
+{
+  "name": "@agent-fold/copilot",
+  "private": true,
+  "description": "Folds each finished GitHub Copilot CLI run to the user's message and the final reply, so the main context stays a clean thread of decisions.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sen Hung Wong",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "bun-types": "1.3.14",
+    "typescript": "5.9.3"
+  }
+}

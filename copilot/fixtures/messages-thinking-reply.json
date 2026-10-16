@@ -1,0 +1,108 @@
+{
+  "model": "claude-sonnet-5",
+  "max_tokens": 32000,
+  "system": [
+    {
+      "type": "text",
+      "text": "You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are running in non-interactive mode and have n…",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    {
+      "type": "text",
+      "text": "<version_information>Version number: 1.0.96</version_information>\n\n<model_information>Powered by <model name=\"Claude Son…",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-15T22:29:29.910-07:00</current_datetime>\n\nThink it through carefully before answering: how man…"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "signature": "EqsFCuICCBIYAipAh6YRmT1t…",
+          "thinking": "I'm listing primes between 1000 and 1100 and counting them, getting 16, which matches pi(1100)-pi(1000)=184-168.\n\n",
+          "type": "thinking"
+        },
+        {
+          "type": "text",
+          "text": "16"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-15T22:29:39.307-07:00</current_datetime>\n\nUse a shell command to cat data.txt, then reply with…"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_011Zu5Mru5E7qDJGVk4qYum7",
+          "name": "bash",
+          "input": {
+            "command": "cat data.txt",
+            "description": "Display contents of data.txt"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_011Zu5Mru5E7qDJGVk4qYum7",
+          "content": "tok-39110-36363\n<shellId: 0 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "done"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-15T22:29:47.346-07:00</current_datetime>\n\nWithout using any tools, what exact token was in dat…",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "temperature": 1,
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "output_config": {
+    "effort": "medium"
+  },
+  "stream": true
+}

@@ -1,0 +1,27 @@
+{
+  "model": "gpt-5.4-nano",
+  "instructions": "Task: Detect whether the CURRENT MESSAGE expresses frustration with an AI coding assistant.\n\nTwo consecutive user messag…",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "[PREVIOUS MESSAGE]\nUse a tool to read README.md and summarize it in two sentences.\n\n[CURRENT MESSAGE]\nWhat settings are …"
+        }
+      ],
+      "type": "message"
+    }
+  ],
+  "reasoning": {
+    "effort": "low",
+    "summary": "auto"
+  },
+  "text": {
+    "verbosity": null
+  },
+  "max_output_tokens": 2048,
+  "store": false,
+  "stream": true,
+  "include": ["reasoning.encrypted_content"]
+}
