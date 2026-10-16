@@ -29,7 +29,7 @@ const folded = (run: number) => [`user:q${run}`, `assistant:text:done ${run}`];
 
 const scenario: Pick<Scenario<void>, "setup" | "turns"> = {
   async setup() {},
-  turns: [probeTurn(1), probeTurn(2, ["/fold off"]), probeTurn(3), probeTurn(4, ["/fold on"])],
+  turns: [probeTurn(1), probeTurn(2, ["/agent-fold off"]), probeTurn(3), probeTurn(4, ["/agent-fold on"])],
 };
 
 function observed(run: Run) {
@@ -58,7 +58,7 @@ test("without the plugin, checkpoint and rewind dispatch", async () => {
   expect(observed(run)[0].checkpointDispatch).toEqual(["Invalid args", "Invalid args"]);
 }, 120_000);
 
-test("/fold off sends the session as without the plugin until /fold on", async () => {
+test("/agent-fold off sends the session as without the plugin until /agent-fold on", async () => {
   const { run } = await runTrial(scenario, { variant: "with-plugin", model: "scripted/scripted", settings });
   expect(observed(run)).toEqual([
     {

@@ -41,7 +41,7 @@ function report(enabled: boolean, changed: boolean, hasMessages: boolean): strin
 }
 
 export function registerFoldCommand(pi: ExtensionAPI, apply: (enabled: boolean) => Promise<void>) {
-  pi.registerCommand("fold", {
+  pi.registerCommand("agent-fold", {
     description: "Turn agent-fold on or off for this session, or show its status",
     getArgumentCompletions: prefix => ACTIONS.filter(action => action.value.startsWith(prefix.trim())),
     async handler(args, ctx) {
@@ -52,7 +52,7 @@ export function registerFoldCommand(pi: ExtensionAPI, apply: (enabled: boolean) 
         return;
       }
       if (action !== "on" && action !== "off") {
-        ctx.ui.notify(`Unknown argument "${action}". Use /fold on, /fold off, or /fold status.`, "warning");
+        ctx.ui.notify(`Unknown argument "${action}". Use /agent-fold on, /agent-fold off, or /agent-fold status.`, "warning");
         return;
       }
       const enabled = action === "on";

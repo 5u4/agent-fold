@@ -7,7 +7,7 @@ agent-fold keeps one session's main context a clean thread of decisions. It buys
 Each top-level agent directory, such as `omp/`, is a self-contained plugin for one coding agent with its own code, prompts, tests, and evals. Before changing one, read its `AGENTS.md` for that agent's rules and verification. Agent directories never import from each other.
 
 ## Invariants
-- The view of folded runs is a pure function of the loop messages and the switch entries on the session branch. The same messages and switch entries always give the same view, so a replayed session shows the model what it saw live. The current run also carries the `INDEX.md` snapshot read when the run started; it is never written to the session. Only the user's `/fold` command appends a switch entry. The hooks never write the session or mutate the loop.
+- The view of folded runs is a pure function of the loop messages and the switch entries on the session branch. The same messages and switch entries always give the same view, so a replayed session shows the model what it saw live. The current run also carries the `INDEX.md` snapshot read when the run started; it is never written to the session. Only the user's `/agent-fold` command appends a switch entry. The hooks never write the session or mutate the loop.
 - Fail open. If folding throws, send the unfolded messages.
 - Never write user settings.
 
