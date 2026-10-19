@@ -31,6 +31,28 @@ function createProfile(settings: Record<string, unknown> | undefined): { name: s
   return { name, dir };
 }
 
+async function runPrint(args: string[], prompt: string, cwd: string, env: Record<string, string | undefined>) {
+  const proc = Bun.spawn(["omp", "-p", ...args, prompt], { cwd, env, stdin: Bun.file("/dev/null"), stdout: "pipe", stderr: "pipe" });
+  return Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
+}
+
+async function runRpc(args: string[], prompt: string, cwd: string, env: Record<string, string | undefined>) {
+  const proc = Bun.spawn(["omp", "--mode", "rpc", ...args], { cwd, env, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+  proc.stdin.write(`${JSON.stringify({ id: "1", type: "prompt", message: prompt })}\n`);
+  proc.stdin.flush();
+  const reader = proc.stdout.getReader();
+  const decoder = new TextDecoder();
+  let stdout = "";
+  while (!stdout.includes('"agent_end"')) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    stdout += decoder.decode(value, { stream: true });
+  }
+  proc.kill();
+  const [stderr] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
+  return [stdout, stderr, stdout.includes('"agent_end"') ? 0 : 1] as const;
+}
+
 export async function runTrial<S>(
   scenario: Pick<Scenario<S>, "setup" | "turns" | "inspect">,
   opts: { variant: Variant; model: string; settings?: Record<string, unknown> },
@@ -59,31 +81,21 @@ export async function runTrial<S>(
       const env = { ...process.env, AGENT_FOLD_HOME: foldHome, FOLD_EVAL_REQUESTS: requestsFile, FOLD_EVAL_SCRIPT: scriptFile };
       const requestsBefore = readLines(requestsFile).length;
       const entriesBefore = readSessionEntries(sessions).length;
-      const proc = Bun.spawn(
-        [
-          "omp",
-          "-p",
-          "--profile",
-          profile.name,
-          "--session-dir",
-          sessions,
-          "--no-extensions",
-          "-e",
-          recorder,
-          ...plugin,
-          "--model",
-          model,
-          ...(index > 0 ? ["-c"] : []),
-          ...commands,
-          prompt,
-        ],
-        { cwd: workdir, env, stdin: Bun.file("/dev/null"), stdout: "pipe", stderr: "pipe" },
-      );
-      const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-        proc.exited,
-      ]);
+      const args = [
+        "--profile",
+        profile.name,
+        "--session-dir",
+        sessions,
+        "--no-extensions",
+        "-e",
+        recorder,
+        ...plugin,
+        "--model",
+        model,
+        ...(index > 0 ? ["-c"] : []),
+        ...commands,
+      ];
+      const [stdout, stderr, exitCode] = scripted && turn.rpc ? await runRpc(args, prompt, workdir, env) : await runPrint(args, prompt, workdir, env);
       if (exitCode !== 0) throw new Error(`omp exited ${exitCode} on turn ${index + 1}: ${stderr}`);
       const entries = readSessionEntries(sessions).slice(entriesBefore);
       turns.push({

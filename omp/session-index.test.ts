@@ -32,6 +32,34 @@ const injected = (body: string, timestamp: number): AgentMessage => ({
 
 const entry = injected("- a.ts — where? here\n", 2);
 
+const usage = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: 0,
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+};
+
+const assistant = (
+  content: Extract<AgentMessage, { role: "assistant" }>["content"],
+  stopReason: "stop" | "toolUse",
+  timestamp: number,
+): AgentMessage => ({ role: "assistant", content, api: "openai-responses", provider: "openai", model: "m", usage, stopReason, timestamp });
+
+const call = (id: string): AgentMessage => assistant([{ type: "toolCall", id, name: "read", arguments: {} }], "toolUse", 0);
+
+const reply = (timestamp: number): AgentMessage => assistant([{ type: "text", text: "done" }], "stop", timestamp);
+
+const skill = (timestamp: number): AgentMessage => ({
+  role: "custom",
+  customType: "skill-prompt",
+  content: "SKILL BODY\n\nprobe",
+  display: true,
+  attribution: "user",
+  timestamp,
+});
+
 describe("withSessionIndex", () => {
   test("inserts the index right after the run boundary carrying the anchor timestamp", () => {
     const messages = [user("q1", 1), result("a"), user("q2", 2), result("b")];
@@ -43,9 +71,24 @@ describe("withSessionIndex", () => {
     expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q2", 2), entry, result("a"), user("handoff", 3)]);
   });
 
-  test("a steering message with the anchor timestamp is not a run boundary", () => {
-    const messages = [user("q2", 2), result("a"), user("steer", 2, true)];
-    expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q2", 2), entry, result("a"), user("steer", 2, true)]);
+  test("a steering message between tool calls with the anchor timestamp is not a run boundary", () => {
+    const messages = [user("q2", 2), call("a"), user("steer", 2, true), result("a")];
+    expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q2", 2), entry, call("a"), user("steer", 2, true), result("a")]);
+  });
+
+  test("inserts the index right after a skill prompt that opened the first run", () => {
+    const messages = [skill(2), call("a"), result("a")];
+    expect(withSessionIndex(messages, snapshot, 2)).toEqual([skill(2), entry, call("a"), result("a")]);
+  });
+
+  test("inserts the index right after a skill prompt that opened a later run", () => {
+    const messages = [user("q1", 1), reply(1), skill(2), call("a"), result("a")];
+    expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q1", 1), reply(1), skill(2), entry, call("a"), result("a")]);
+  });
+
+  test("returns messages unchanged when the anchor is gone and a skill prompt opened the last run", () => {
+    const messages = [user("q1", 1), reply(1), skill(3)];
+    expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q1", 1), reply(1), skill(3)]);
   });
 
   test("when compaction summarized the anchor away, the index follows the trailing summary", () => {

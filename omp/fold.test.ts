@@ -52,6 +52,35 @@ const summary = (text: string): AgentMessage => ({
   timestamp: 0,
 });
 
+const custom = (customType: string, content: string, attribution: "user" | "agent"): AgentMessage => ({
+  role: "custom",
+  customType,
+  content,
+  display: true,
+  attribution,
+  timestamp: 0,
+});
+
+const skill = (text: string): AgentMessage => custom("skill-prompt", `SKILL BODY\n\n${text}`, "user");
+
+const notice = (customType: string): AgentMessage => custom(customType, "notice", "agent");
+
+const agentCustom = (customType: string): AgentMessage => custom(customType, "injected", "agent");
+
+const developer = (text: string): AgentMessage => ({ role: "developer", content: text, timestamp: 0 });
+
+const fileMention: AgentMessage = { role: "fileMention", files: [{ path: "a.ts", content: "a" }], timestamp: 0 };
+
+const bash: AgentMessage = {
+  role: "bashExecution",
+  command: "ls",
+  output: "a.ts",
+  exitCode: 0,
+  cancelled: false,
+  truncated: false,
+  timestamp: 0,
+};
+
 describe("foldView", () => {
   test("folds a completed run to its user message and final reply", () => {
     const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("q2")];
@@ -98,9 +127,61 @@ describe("foldView", () => {
     expect(foldView(messages)).toEqual([summary("s"), reply("done 1"), user("q2")]);
   });
 
-  test("passes messages before the first boundary through", () => {
-    const messages = [call("a"), result("a"), user("q1"), reply("done 1"), user("q2")];
-    expect(foldView(messages)).toEqual([call("a"), result("a"), user("q1"), reply("done 1"), user("q2")]);
+  test("passes messages before the first run start through", () => {
+    const messages = [notice("tool-roster-notice"), user("q1"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([notice("tool-roster-notice"), user("q1"), reply("done 1"), user("q2")]);
+  });
+
+  test("folds a first run opened by a skill prompt to the prompt and final reply", () => {
+    const messages = [skill("probe q1"), call("a"), result("a"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([skill("probe q1"), reply("done 1"), user("q2")]);
+  });
+
+  test("a skill prompt after a final reply opens a run, so the previous run folds", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), skill("probe q2"), call("b"), result("b")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), skill("probe q2"), call("b"), result("b")]);
+  });
+
+  test("a skill prompt injected after a tool call stays inside the run", () => {
+    const messages = [user("q1"), call("a"), skill("probe aside"), result("a"), reply("done 1"), user("q2")];
+    expect(foldView(messages)).toEqual([user("q1"), skill("probe aside"), reply("done 1"), user("q2")]);
+  });
+
+  test("steering that arrives after a final reply opens a run", () => {
+    const messages = [user("q1"), call("a"), result("a"), reply("done 1"), user("late", true), call("b"), result("b")];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("late", true), call("b"), result("b")]);
+  });
+
+  test("drops agent-injected messages from a folded run and keeps user context in place", () => {
+    const messages = [
+      user("q1"),
+      agentCustom("eager-task-prelude"),
+      call("a"),
+      notice("xdev-mount-notice"),
+      fileMention,
+      result("a"),
+      agentCustom("async-result"),
+      developer("reminder"),
+      bash,
+      reply("done 1"),
+      user("q2"),
+    ];
+    expect(foldView(messages)).toEqual([user("q1"), notice("xdev-mount-notice"), fileMention, bash, reply("done 1"), user("q2")]);
+  });
+
+  test("keeps only the last final reply when the agent continued after a text reply", () => {
+    const messages = [
+      user("q1"),
+      call("a"),
+      result("a"),
+      reply("early"),
+      developer("You stopped with 1 incomplete todo item(s)"),
+      call("b"),
+      result("b"),
+      reply("done 1"),
+      user("q2"),
+    ];
+    expect(foldView(messages)).toEqual([user("q1"), reply("done 1"), user("q2")]);
   });
 
   test("leaves aborted, errored, and tool-call-ending runs untouched", () => {
