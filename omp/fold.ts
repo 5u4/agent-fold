@@ -35,11 +35,17 @@ function foldRun(run: AgentMessage[]): AgentMessage[] {
   return [run[0], ...run.slice(1, lastIndex).filter(keptInFold), reply, ...run.slice(lastIndex + 1).filter(keptInFold)];
 }
 
+function opensRun(message: AgentMessage, midRun: boolean): boolean {
+  if (message.role === "compactionSummary" || message.role === "branchSummary") return true;
+  if (message.role === "user" && message.steering !== true) return true;
+  return !midRun && isUserAuthoredMessage(message);
+}
+
 export function runStarts(messages: AgentMessage[]): number[] {
   const starts: number[] = [];
   let midRun = false;
   messages.forEach((message, index) => {
-    if (message.role === "compactionSummary" || message.role === "branchSummary" || (!midRun && isUserAuthoredMessage(message))) starts.push(index);
+    if (opensRun(message, midRun)) starts.push(index);
     if (message.role === "assistant") midRun = message.stopReason === "toolUse";
   });
   return starts;

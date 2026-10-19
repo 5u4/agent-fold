@@ -199,6 +199,8 @@ describe("foldView", () => {
       user("q3"),
       call("c"),
       user("q4"),
+      reply("done 4"),
+      user("q5"),
     ];
     expect(foldView(messages)).toEqual([
       user("q1"),
@@ -212,6 +214,8 @@ describe("foldView", () => {
       user("q3"),
       call("c"),
       user("q4"),
+      reply("done 4"),
+      user("q5"),
     ]);
   });
 

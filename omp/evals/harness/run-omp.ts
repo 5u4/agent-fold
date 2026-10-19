@@ -40,17 +40,17 @@ async function runRpc(args: string[], prompt: string, cwd: string, env: Record<s
   const proc = Bun.spawn(["omp", "--mode", "rpc", ...args], { cwd, env, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
   proc.stdin.write(`${JSON.stringify({ id: "1", type: "prompt", message: prompt })}\n`);
   proc.stdin.flush();
-  const reader = proc.stdout.getReader();
-  const decoder = new TextDecoder();
   let stdout = "";
-  while (!stdout.includes('"agent_end"')) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    stdout += decoder.decode(value, { stream: true });
+  let ended = false;
+  for await (const chunk of proc.stdout.pipeThrough(new TextDecoderStream())) {
+    const pending = stdout.slice(stdout.lastIndexOf("\n") + 1) + chunk;
+    stdout += chunk;
+    ended = pending.split("\n").slice(0, -1).some(line => line.trim() !== "" && JSON.parse(line).type === "agent_end");
+    if (ended) break;
   }
   proc.kill();
   const [stderr] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
-  return [stdout, stderr, stdout.includes('"agent_end"') ? 0 : 1] as const;
+  return [stdout, stderr, ended ? 0 : 1] as const;
 }
 
 export async function runTrial<S>(
