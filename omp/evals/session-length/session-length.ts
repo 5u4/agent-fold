@@ -1,10 +1,11 @@
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
 import { calculatePromptTokens } from "@oh-my-pi/pi-agent-core/compaction";
 import { Tokenizer } from "@oh-my-pi/pi-agent-core/tokenizer";
+import { isUserAuthoredMessage } from "@oh-my-pi/pi-coding-agent/session/messages";
 import { buildSessionContext } from "@oh-my-pi/pi-coding-agent/session/session-context";
 import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-entries";
 import { parseSessionEntries } from "@oh-my-pi/pi-coding-agent/session/session-loader";
-import { foldSettled } from "../../fold";
+import { foldSettled, runStarts } from "../../fold";
 
 export type Run = {
   firstPrompt: number;
@@ -23,9 +24,6 @@ export type Trial = { unfolded: number; folded: number };
 const tokenizer = new Tokenizer();
 const MIN_REMOVED_TOKENS = 2000;
 
-const isRunStart = (message: AgentMessage) =>
-  message.role === "user" ? message.steering !== true : message.role === "compactionSummary" || message.role === "branchSummary";
-
 export const countTokens = (messages: AgentMessage[]) =>
   tokenizer.countMessages(
     messages.map(message =>
@@ -38,7 +36,7 @@ export const countTokens = (messages: AgentMessage[]) =>
 type RawRun = { messages: AgentMessage[]; firstPrompt: number; inFlightGrowth: number; model: string } | undefined;
 
 function splitRuns(messages: AgentMessage[]): RawRun[] {
-  const starts = messages.flatMap((message, index) => (isRunStart(message) ? [index] : []));
+  const starts = runStarts(messages);
   const ends = [...starts.slice(1), messages.length];
   return starts.map((start, k): RawRun => {
     const slice = messages.slice(start, ends[k]);
@@ -113,12 +111,15 @@ export function classify(runs: Run[], calibration: number): Mode {
 export function analyzeSession(content: string): Session | undefined {
   const entries = parseSessionEntries(content).filter((entry): entry is SessionEntry => entry.type !== "session");
   const { messages } = buildSessionContext(entries);
-  const firstUser = messages.find(message => message.role === "user");
+  const starts = runStarts(messages);
+  const firstUser = starts
+    .map(start => messages[start])
+    .find((message): message is Extract<AgentMessage, { role: "user" | "custom" }> => isUserAuthoredMessage(message));
   if (!firstUser) return undefined;
   const runs = splitRuns(messages);
   return {
     key: `${firstUser.timestamp}:${JSON.stringify(firstUser.content).slice(0, 200)}`,
-    runCount: messages.filter(isRunStart).length,
+    runCount: starts.length,
     startPrompt: runs[0]?.firstPrompt,
     segments: segmentsOf(runs),
   };

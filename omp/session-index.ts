@@ -1,5 +1,6 @@
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
-import { startsRun } from "./fold";
+import { isUserAuthoredMessage } from "@oh-my-pi/pi-coding-agent/session/messages";
+import { runStarts } from "./fold";
 
 export type IndexSnapshot = { dir: string; text: string };
 
@@ -27,10 +28,11 @@ export function capIndex(text: string): string {
 }
 
 export function withSessionIndex(messages: AgentMessage[], { dir, text }: IndexSnapshot, anchor: number): AgentMessage[] {
-  let at = messages.findLastIndex(message => startsRun(message) && message.timestamp === anchor);
-  if (at === -1) {
-    at = messages.findLastIndex(startsRun);
-    if (at === -1 || messages[at].role === "user") return messages;
+  const starts = runStarts(messages);
+  let at = starts.findLast(start => messages[start].timestamp === anchor);
+  if (at === undefined) {
+    at = starts.at(-1);
+    if (at === undefined || isUserAuthoredMessage(messages[at])) return messages;
   }
   const index: AgentMessage = {
     role: "custom",

@@ -24,7 +24,7 @@ export type Verdict = { status: "pass" | "fail" | "invalid"; evidence: string };
 
 export const FOLD_DIR = "<fold-dir>";
 
-export type ScriptedTurn = { commands?: string[]; prompt: string; script: Reply[] };
+export type ScriptedTurn = { commands?: string[]; prompt: string; rpc?: true; script: Reply[] };
 
 export type ScriptedRequest = { systemPrompt: string[]; messages: Message[] };
 
