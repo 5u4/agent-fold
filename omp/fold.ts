@@ -1,6 +1,6 @@
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
 import type { AssistantMessage } from "@oh-my-pi/pi-ai";
-import { sanitizeAssistantForReparentedHistory } from "@oh-my-pi/pi-coding-agent/session/messages";
+import { isUserAuthoredMessage, sanitizeAssistantForReparentedHistory } from "@oh-my-pi/pi-coding-agent/session/messages";
 
 function finalReply(message: AgentMessage): AssistantMessage | undefined {
   if (message.role !== "assistant") return undefined;
@@ -11,24 +11,42 @@ function finalReply(message: AgentMessage): AssistantMessage | undefined {
   return content.some(block => block.type === "text" && block.text.trim() !== "") ? { ...sanitized, content } : undefined;
 }
 
-function foldRun(run: AgentMessage[]): AgentMessage[] {
-  const lastIndex = run.findLastIndex(message => message.role === "assistant");
-  if (lastIndex < 1 || !finalReply(run[lastIndex])) return run;
-  const kept = run.slice(1).flatMap((message): AgentMessage[] => {
-    if (message.role === "toolResult") return [];
-    if (message.role !== "assistant") return [message];
-    const reply = finalReply(message);
-    return reply ? [reply] : [];
-  });
-  return [run[0], ...kept];
+const KEPT_ROLES: Partial<Record<AgentMessage["role"], true>> = { fileMention: true, bashExecution: true, pythonExecution: true };
+
+const KEPT_NOTICES: Record<string, true> = {
+  "xdev-mount-notice": true,
+  "tool-roster-notice": true,
+  "eval-prelude-notice": true,
+  "session-agent-notice": true,
+};
+
+function keptInFold(message: AgentMessage): boolean {
+  return (
+    isUserAuthoredMessage(message) ||
+    Object.hasOwn(KEPT_ROLES, message.role) ||
+    (message.role === "custom" && Object.hasOwn(KEPT_NOTICES, message.customType))
+  );
 }
 
-export function startsRun(message: AgentMessage): boolean {
-  return message.role === "user" ? message.steering !== true : message.role === "compactionSummary" || message.role === "branchSummary";
+function foldRun(run: AgentMessage[]): AgentMessage[] {
+  const lastIndex = run.findLastIndex(message => message.role === "assistant");
+  const reply = lastIndex < 1 ? undefined : finalReply(run[lastIndex]);
+  if (!reply) return run;
+  return [run[0], ...run.slice(1, lastIndex).filter(keptInFold), reply, ...run.slice(lastIndex + 1).filter(keptInFold)];
+}
+
+export function runStarts(messages: AgentMessage[]): number[] {
+  const starts: number[] = [];
+  let midRun = false;
+  messages.forEach((message, index) => {
+    if (message.role === "compactionSummary" || message.role === "branchSummary" || (!midRun && isUserAuthoredMessage(message))) starts.push(index);
+    if (message.role === "assistant") midRun = message.stopReason === "toolUse";
+  });
+  return starts;
 }
 
 function foldRuns(messages: AgentMessage[], foldLast: boolean): AgentMessage[] {
-  const starts = messages.flatMap((message, index) => (startsRun(message) ? [index] : []));
+  const starts = runStarts(messages);
   const folded = foldLast ? starts.length : starts.length - 1;
   if (folded < 1) return messages;
   const ends = [...starts.slice(1), messages.length];

@@ -6,7 +6,7 @@ import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { registerCompactionGate } from "./compaction";
 import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
-import { foldView, startsRun } from "./fold";
+import { foldView, runStarts } from "./fold";
 import { capIndex, type IndexSnapshot, withSessionIndex } from "./session-index";
 import { foldOn, registerFoldCommand } from "./switch";
 
@@ -46,7 +46,7 @@ export default function foldIn(pi: ExtensionAPI) {
     try {
       const view = foldView(event.messages);
       if (!snapshot) return { messages: view };
-      snapshot.anchor ??= view.findLast(startsRun)?.timestamp;
+      snapshot.anchor ??= view[runStarts(view).at(-1) ?? view.length]?.timestamp;
       return { messages: snapshot.anchor === undefined ? view : withSessionIndex(view, snapshot, snapshot.anchor) };
     } catch {
       return undefined;
