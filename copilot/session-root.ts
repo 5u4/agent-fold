@@ -1,12 +1,9 @@
 import { closeSync, openSync, readdirSync, readSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
-export const sessionStateDir = join(process.env.COPILOT_HOME || join(homedir(), ".copilot"), "session-state");
+type SessionStart = { sessionId: string; startTime: string; rootEventId: string; cwd: unknown };
 
-type SessionStart = { sessionId: string; startTime: string; rootEventId: string };
-
-type SessionKey = Pick<SessionStart, "sessionId" | "startTime">;
+export type ConversationRoot = { sessionId: string; startTime: string; cwd: string };
 
 const CHUNK_BYTES = 4096;
 
@@ -29,18 +26,18 @@ function readFirstLine(path: string): string {
 function readSessionStart(sessionDir: string): SessionStart | undefined {
   try {
     const event = JSON.parse(readFirstLine(join(sessionDir, "events.jsonl")));
-    const { sessionId, startTime } = event?.data ?? {};
+    const { sessionId, startTime, context } = event?.data ?? {};
     if (event.type !== "session.start" || typeof event.id !== "string") return undefined;
     if (typeof sessionId !== "string" || typeof startTime !== "string" || Number.isNaN(Date.parse(startTime))) return undefined;
-    return { sessionId, startTime, rootEventId: event.id };
+    return { sessionId, startTime, rootEventId: event.id, cwd: context?.cwd };
   } catch {
     return undefined;
   }
 }
 
-export function conversationRoot(stateDir: string, sessionId: string): SessionKey | undefined {
+export function conversationRoot(stateDir: string, sessionId: string): ConversationRoot | undefined {
   const own = readSessionStart(join(stateDir, sessionId));
-  if (own === undefined) return undefined;
+  if (own === undefined || typeof own.cwd !== "string") return undefined;
   let root = own;
   for (const id of readdirSync(stateDir)) {
     if (id === sessionId) continue;
@@ -49,5 +46,5 @@ export function conversationRoot(stateDir: string, sessionId: string): SessionKe
     const delta = Date.parse(start.startTime) - Date.parse(root.startTime);
     if (delta < 0 || (delta === 0 && start.sessionId < root.sessionId)) root = start;
   }
-  return { sessionId: root.sessionId, startTime: root.startTime };
+  return { sessionId: root.sessionId, startTime: root.startTime, cwd: own.cwd };
 }
