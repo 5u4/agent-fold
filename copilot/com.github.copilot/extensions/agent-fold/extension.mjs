@@ -68,8 +68,10 @@ async function queryProxy(port, secret, query, timeoutMs = 1000) {
   url.searchParams.set("nonce", nonce);
   if (query.launch !== undefined)
     url.searchParams.set("launch", query.launch);
-  if (query.session !== undefined)
-    url.searchParams.set("session", query.session);
+  if (query.session !== undefined) {
+    url.searchParams.set("session", query.session.id);
+    url.searchParams.set("since", String(query.session.since));
+  }
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok)
@@ -85,6 +87,17 @@ async function queryProxy(port, secret, query, timeoutMs = 1000) {
   }
 }
 
+// turn-start.ts
+function turnStart(events) {
+  for (const event of events.toReversed()) {
+    if (event.type === "session.start" || event.type === "session.resume")
+      return;
+    if (event.type === "user.message" && !event.agentId)
+      return Date.parse(event.timestamp);
+  }
+  return;
+}
+
 // extension.ts
 var BYPASS_WARNING = "This session's model requests do not go through the agent-fold proxy, so its runs are not folded; start Copilot with `agent-fold copilot` or the app with `agent-fold gh-app`.";
 function keepFoldHomeGranted(session) {
@@ -93,17 +106,26 @@ function keepFoldHomeGranted(session) {
   session.on("session.custom_agents_updated", grant);
   session.on("session.skills_loaded", grant);
 }
-async function routedThroughProxy(sessionId) {
+async function routedThroughProxy(sessionId, since) {
   const state = readState();
   const secret = readSecret();
   if (state === undefined || secret === undefined)
     return false;
-  return (await queryProxy(state.port, secret, { session: sessionId }))?.sessionSeen === true;
+  return (await queryProxy(state.port, secret, { session: { id: sessionId, since } }))?.sessionSeen === true;
 }
 function warnOnBypass(session) {
   const stop = session.on("session.idle", () => {
-    stop();
-    routedThroughProxy(session.sessionId).then((routed) => routed ? undefined : session.log(BYPASS_WARNING, { level: "warning", ephemeral: true })).catch((error) => console.error(`agent-fold: could not check the proxy for session ${session.sessionId}: ${error}`));
+    session.getEvents().then(async (events) => {
+      const since = turnStart(events);
+      if (since === undefined)
+        return;
+      stop();
+      if (!await routedThroughProxy(session.sessionId, since))
+        await session.log(BYPASS_WARNING, { level: "warning", ephemeral: true });
+    }).catch((error) => {
+      stop();
+      console.error(`agent-fold: could not check the proxy for session ${session.sessionId}: ${error}`);
+    });
   });
 }
 if (!process.env.SESSION_ID)

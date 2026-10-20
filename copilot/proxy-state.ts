@@ -140,14 +140,17 @@ function sameHex(a: string, b: string): boolean {
 export async function queryProxy(
   port: number,
   secret: string,
-  query: { launch?: string; session?: string },
+  query: { launch?: string; session?: { id: string; since: number } },
   timeoutMs = 1000,
 ): Promise<ProxyStatus | undefined> {
   const nonce = randomBytes(16).toString("hex");
   const url = new URL(`http://127.0.0.1:${port}${STATUS_PATH}`);
   url.searchParams.set("nonce", nonce);
   if (query.launch !== undefined) url.searchParams.set("launch", query.launch);
-  if (query.session !== undefined) url.searchParams.set("session", query.session);
+  if (query.session !== undefined) {
+    url.searchParams.set("session", query.session.id);
+    url.searchParams.set("since", String(query.session.since));
+  }
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) return undefined;

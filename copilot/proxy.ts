@@ -107,7 +107,7 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
   const injections = new Map<string, Promise<Injection>>();
   const upstreams = new Map<string, Promise<URL>>();
   const launches = new Set<string>();
-  const sessions = new Set<string>();
+  const sessionLastSeen = new Map<string, number>();
   const awaitedStarts = new Set<string>();
 
   async function sessionRoot(sessionId: string): Promise<ConversationRoot> {
@@ -201,11 +201,12 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
     if (!nonce) return new Response("agent-fold: nonce required\n", { status: 400 });
     const launch = url.searchParams.get("launch");
     const session = url.searchParams.get("session");
+    const lastSeen = session === null ? undefined : sessionLastSeen.get(session.toLowerCase());
     return Response.json({
       protocol: PROTOCOL,
       proof: proof(secret, nonce),
       launchSeen: launch !== null && launches.has(launch.toLowerCase()),
-      sessionSeen: session !== null && sessions.has(session.toLowerCase()),
+      sessionSeen: lastSeen !== undefined && lastSeen >= Number(url.searchParams.get("since") ?? Number.NaN),
     });
   }
 
@@ -216,7 +217,7 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
     if (target.kind === "forbidden") return { response: new Response("agent-fold: forbidden host\n", { status: 403 }), folded: false };
     if (launch !== undefined) launches.add(launch);
     const sessionId = request.headers.get("x-client-session-id");
-    if (sessionId !== null && UUID.test(sessionId)) sessions.add(sessionId.toLowerCase());
+    if (sessionId !== null && UUID.test(sessionId)) sessionLastSeen.set(sessionId.toLowerCase(), Date.now());
     if (target.kind === "status") return { response: status(url), folded: false };
     if (target.kind === "rejectUpgrade") return { response: new Response(null, { status: 404 }), folded: false };
     return forward(request, path, url.search, target);

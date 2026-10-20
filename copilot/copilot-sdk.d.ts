@@ -11,6 +11,7 @@ declare module "@github/copilot-sdk/extension" {
     };
     on(eventType: "session.custom_agents_updated" | "session.skills_loaded" | "session.idle", handler: () => void): () => void;
     log(message: string, options?: { level?: "info" | "warning" | "error"; ephemeral?: boolean }): Promise<void>;
+    getEvents(): Promise<{ type: string; timestamp: string; agentId?: string }[]>;
   }
 
   export function joinSession(config?: { additionalDirectories?: string[] }): Promise<CopilotSession>;

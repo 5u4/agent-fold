@@ -176,11 +176,17 @@ test("a launch prefix is stripped before forwarding and reported by status", asy
   expect(await queryProxy(port, SECRET, { launch: SESSION })).toEqual({ protocol: PROTOCOL, launchSeen: false, sessionSeen: false });
 });
 
-test("status reports a session once its requests came through", async () => {
+test("status reports a session only when a request of it came through at or after since", async () => {
   const port = proxy.port ?? 0;
-  expect(await queryProxy(port, SECRET, { session: SESSION })).toEqual({ protocol: PROTOCOL, launchSeen: false, sessionSeen: false });
+  const unseen = { protocol: PROTOCOL, launchSeen: false, sessionSeen: false };
+  const seen = { protocol: PROTOCOL, launchSeen: false, sessionSeen: true };
+  expect(await queryProxy(port, SECRET, { session: { id: SESSION, since: 0 } })).toEqual(unseen);
+  const before = Date.now();
   await send(port, "/chat/completions", modelRequest("conversation-background", "{}"));
-  expect(await queryProxy(port, SECRET, { session: SESSION })).toEqual({ protocol: PROTOCOL, launchSeen: false, sessionSeen: true });
+  const after = Date.now() + 1;
+  expect(await queryProxy(port, SECRET, { session: { id: SESSION, since: before } })).toEqual(seen);
+  expect(await queryProxy(port, SECRET, { session: { id: SESSION, since: after } })).toEqual(unseen);
+  expect(await queryProxy(port, SECRET, { session: { id: SESSION.toUpperCase(), since: before } })).toEqual(seen);
 });
 
 test("status proves the proxy only to a caller holding its secret", async () => {
