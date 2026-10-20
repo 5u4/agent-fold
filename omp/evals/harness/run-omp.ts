@@ -45,7 +45,10 @@ async function runRpc(args: string[], prompt: string, cwd: string, env: Record<s
   for await (const chunk of proc.stdout.pipeThrough(new TextDecoderStream())) {
     const pending = stdout.slice(stdout.lastIndexOf("\n") + 1) + chunk;
     stdout += chunk;
-    ended = pending.split("\n").slice(0, -1).some(line => line.trim() !== "" && JSON.parse(line).type === "agent_end");
+    ended = pending
+      .split("\n")
+      .slice(0, -1)
+      .some(line => line.trim() !== "" && JSON.parse(line).type === "agent_end");
     if (ended) break;
   }
   proc.kill();
@@ -95,7 +98,8 @@ export async function runTrial<S>(
         ...(index > 0 ? ["-c"] : []),
         ...commands,
       ];
-      const [stdout, stderr, exitCode] = scripted && turn.rpc ? await runRpc(args, prompt, workdir, env) : await runPrint(args, prompt, workdir, env);
+      const [stdout, stderr, exitCode] =
+        scripted && turn.rpc ? await runRpc(args, prompt, workdir, env) : await runPrint(args, prompt, workdir, env);
       if (exitCode !== 0) throw new Error(`omp exited ${exitCode} on turn ${index + 1}: ${stderr}`);
       const entries = readSessionEntries(sessions).slice(entriesBefore);
       turns.push({

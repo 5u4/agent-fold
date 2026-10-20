@@ -24,7 +24,10 @@ export function capIndex(text: string): string {
     bytes = next;
     kept++;
   }
-  return `${lines.slice(0, kept).map(line => `${line}\n`).join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
+  return `${lines
+    .slice(0, kept)
+    .map(line => `${line}\n`)
+    .join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
 }
 
 export function withSessionIndex(messages: AgentMessage[], { dir, text }: IndexSnapshot, anchor: number): AgentMessage[] {

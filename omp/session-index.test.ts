@@ -93,12 +93,7 @@ describe("withSessionIndex", () => {
 
   test("when compaction summarized the anchor away, the index follows the trailing summary", () => {
     const messages = [user("q1", 1), summary, result("a")];
-    expect(withSessionIndex(messages, snapshot, 2)).toEqual([
-      user("q1", 1),
-      summary,
-      injected("- a.ts — where? here\n", 9),
-      result("a"),
-    ]);
+    expect(withSessionIndex(messages, snapshot, 2)).toEqual([user("q1", 1), summary, injected("- a.ts — where? here\n", 9), result("a")]);
   });
 
   test("returns messages unchanged when the anchor is gone and no summary ends the history", () => {

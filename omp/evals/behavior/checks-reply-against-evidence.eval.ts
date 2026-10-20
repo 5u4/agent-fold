@@ -56,8 +56,7 @@ Production's 7 comes from \`APP_RETRIES=7\` in deploy/production.env, which over
 \`bin/config production\`
 `;
 
-const INDEX =
-  `- ${FOLD_DIR}/retries.md, deploy/production.env, config/defaults.yaml — where production's 7 retries come from: APP_RETRIES in deploy/production.env overrides the yaml default\n`;
+const INDEX = `- ${FOLD_DIR}/retries.md, deploy/production.env, config/defaults.yaml — where production's 7 retries come from: APP_RETRIES in deploy/production.env overrides the yaml default\n`;
 
 const investigation: Reply[] = [
   { toolCall: { name: "read", arguments: { path: "config/defaults.yaml" } } },

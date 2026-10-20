@@ -56,9 +56,7 @@ export default function scriptedProvider(pi: ExtensionAPI) {
       const scripted = script[index];
       if (!scripted) throw new Error(`script has no reply for request ${index} of this turn`);
       const foldDir = foldDirIn(recorded.systemPrompt, process.env.AGENT_FOLD_HOME);
-      const reply: Reply = JSON.parse(
-        JSON.stringify(scripted).replaceAll(`${FOLD_DIR}/`, foldDir ? `${foldDir}/` : "local://"),
-      );
+      const reply: Reply = JSON.parse(JSON.stringify(scripted).replaceAll(`${FOLD_DIR}/`, foldDir ? `${foldDir}/` : "local://"));
       const stopReason = "text" in reply ? "stop" : "toolUse";
       const message: AssistantMessage = {
         role: "assistant",
