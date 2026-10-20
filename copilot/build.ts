@@ -1,6 +1,8 @@
-export const EXTENSION_PATH = new URL("./com.github.copilot/extensions/agent-fold/extension.mjs", import.meta.url).pathname;
+import { join } from "node:path";
 
-const PACKAGE_DIR = new URL(".", import.meta.url).pathname;
+const PACKAGE_DIR = import.meta.dir;
+
+export const EXTENSION_PATH = join(PACKAGE_DIR, "com.github.copilot/extensions/agent-fold/extension.mjs");
 
 export async function buildExtension(): Promise<string> {
   // Bun labels each bundled module with its path relative to the cwd, so the build runs from the package dir.
