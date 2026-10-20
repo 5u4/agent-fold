@@ -10,14 +10,15 @@ var foldHome = process.env.AGENT_FOLD_HOME || join(home, ".agent-fold");
 var configPath = join(process.env.XDG_CONFIG_HOME || join(home, ".config"), "agent-fold", "copilot.json");
 var proxyDir = join(process.env.XDG_STATE_HOME || join(home, ".local", "state"), "agent-fold", "copilot-proxy");
 var secretPath = join(proxyDir, "secret");
-var statePath = join(proxyDir, "proxy.json");
 var logPath = join(proxyDir, "proxy.log");
 var sessionStateDir = join(process.env.COPILOT_HOME || join(home, ".copilot"), "session-state");
 
 // proxy-state.ts
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join as join2 } from "node:path";
 var STATUS_PATH = "/_agent-fold/status";
+var EPOCH_FILE = /^proxy-(\d+)\.json$/;
 function readSecret() {
   try {
     return readFileSync(secretPath, "utf8").trim() || undefined;
@@ -31,13 +32,30 @@ function proof(secret, nonce) {
 function isCount(value) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
-function readState() {
+function epochPath(epoch) {
+  return join2(proxyDir, `proxy-${epoch}.json`);
+}
+function epochs() {
   try {
-    const { protocol, pid, port } = JSON.parse(readFileSync(statePath, "utf8"));
+    return readdirSync(proxyDir).flatMap((name) => {
+      const match = EPOCH_FILE.exec(name);
+      return match === null ? [] : [Number(match[1])];
+    }).sort((a, b) => b - a);
+  } catch {
+    return [];
+  }
+}
+function readEpoch(epoch) {
+  try {
+    const { protocol, pid, port } = JSON.parse(readFileSync(epochPath(epoch), "utf8"));
     return isCount(protocol) && isCount(pid) && isCount(port) ? { protocol, pid, port } : undefined;
   } catch {
     return;
   }
+}
+function readState() {
+  const [latest] = epochs();
+  return latest === undefined ? undefined : readEpoch(latest);
 }
 function sameHex(a, b) {
   const left = Buffer.from(a, "hex");

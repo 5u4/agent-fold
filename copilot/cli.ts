@@ -6,7 +6,7 @@ import { constants } from "node:os";
 import { type Config, readConfig, type Target } from "./config";
 import { configPath, foldHome, logPath, sessionStateDir } from "./paths";
 import { startProxy } from "./proxy";
-import { ensureSecret, PROTOCOL, type ProxyState, queryProxy, readState, removeState, writeState } from "./proxy-state";
+import { claimState, ensureSecret, liveState, PROTOCOL, type ProxyState, queryProxy, removeState } from "./proxy-state";
 
 const USAGE = "usage: agent-fold proxy | agent-fold copilot [args...] | agent-fold gh-app [args...]";
 
@@ -25,15 +25,9 @@ class ExitError extends Error {
   }
 }
 
-async function liveProxy(secret: string): Promise<ProxyState | undefined> {
-  const state = readState();
-  if (state === undefined) return undefined;
-  return (await queryProxy(state.port, secret, {}))?.protocol === PROTOCOL ? state : undefined;
-}
-
 export async function ensureProxy(): Promise<ProxyState> {
   const secret = ensureSecret();
-  const running = await liveProxy(secret);
+  const running = await liveState(secret);
   if (running !== undefined) return running;
   const log = openSync(logPath, "a", 0o600);
   try {
@@ -44,7 +38,7 @@ export async function ensureProxy(): Promise<ProxyState> {
   const deadline = Date.now() + START_TIMEOUT_MS;
   while (Date.now() < deadline) {
     await Bun.sleep(POLL_MS);
-    const started = await liveProxy(secret);
+    const started = await liveState(secret);
     if (started !== undefined) return started;
   }
   throw new ExitError(`agent-fold: the proxy did not start within ${START_TIMEOUT_MS / 1000} s; see ${logPath}`, 1);
@@ -103,15 +97,21 @@ async function launch(target: Target, config: Config, args: string[]): Promise<n
   return (await seen) ? 0 : 1;
 }
 
-function serveProxy(): void {
+async function serveProxy(): Promise<void> {
   const secret = ensureSecret();
   const { upstream } = readConfig();
   const server = startProxy({ upstream, secret, foldHome, sessionStateDir });
   const port = server.port ?? 0;
-  writeState({ protocol: PROTOCOL, pid: process.pid, port });
   console.error(`${new Date().toISOString()} agent-fold proxy ${process.pid} listening on 127.0.0.1:${port}`);
+  const claim = await claimState({ protocol: PROTOCOL, pid: process.pid, port }, secret);
+  if ("owner" in claim) {
+    console.error(
+      `${new Date().toISOString()} agent-fold proxy ${process.pid} exits: proxy ${claim.owner.pid} already serves 127.0.0.1:${claim.owner.port}`,
+    );
+    process.exit(0);
+  }
   const stop = () => {
-    removeState(process.pid);
+    removeState(claim.epoch);
     process.exit(0);
   };
   process.once("SIGTERM", stop);

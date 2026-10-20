@@ -11,8 +11,6 @@ export const proxyDir = join(process.env.XDG_STATE_HOME || join(home, ".local", 
 
 export const secretPath = join(proxyDir, "secret");
 
-export const statePath = join(proxyDir, "proxy.json");
-
 export const logPath = join(proxyDir, "proxy.log");
 
 export const sessionStateDir = join(process.env.COPILOT_HOME || join(home, ".copilot"), "session-state");
