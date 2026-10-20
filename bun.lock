@@ -8,6 +8,13 @@
         "@biomejs/biome": "2.5.15",
       },
     },
+    "copilot": {
+      "name": "@agent-fold/copilot",
+      "devDependencies": {
+        "bun-types": "1.3.14",
+        "typescript": "5.9.3",
+      },
+    },
     "omp": {
       "name": "@agent-fold/omp",
       "devDependencies": {
@@ -20,6 +27,8 @@
     },
   },
   "packages": {
+    "@agent-fold/copilot": ["@agent-fold/copilot@workspace:copilot"],
+
     "@agent-fold/omp": ["@agent-fold/omp@workspace:omp"],
 
     "@babel/helper-string-parser": ["@babel/helper-string-parser@7.29.7", "", {}, "sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw=="],
