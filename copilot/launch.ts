@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { sessionStateDir } from "./session-root";
 
 const RESUME_FLAGS: Record<string, true> = { "-r": true, "--resume": true, "--continue": true };
 
@@ -12,9 +12,8 @@ export function hasResumeFlag(parentArgs: string): boolean {
 export function isThrowawayLaunch(sessionId: string): boolean {
   try {
     if (!hasResumeFlag(execFileSync("ps", ["-o", "args=", "-p", String(process.ppid)], { encoding: "utf8" }))) return false;
-    const sessionState = join(process.env.COPILOT_HOME || join(homedir(), ".copilot"), "session-state");
-    if (existsSync(join(sessionState, sessionId, "events.jsonl"))) return false;
-    return readdirSync(sessionState).some(id => id !== sessionId && existsSync(join(sessionState, id, "events.jsonl")));
+    if (existsSync(join(sessionStateDir, sessionId, "events.jsonl"))) return false;
+    return readdirSync(sessionStateDir).some(id => id !== sessionId && existsSync(join(sessionStateDir, id, "events.jsonl")));
   } catch {
     return false;
   }

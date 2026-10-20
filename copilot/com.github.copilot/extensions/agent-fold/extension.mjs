@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { homedir as homedir3 } from "node:os";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 import { CopilotClient, CopilotRequestHandler } from "@github/copilot-sdk";
 
 // context/fold.md
@@ -205,9 +205,63 @@ var formats = { "/responses": responses, "/v1/messages": messages };
 
 // launch.ts
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync as readdirSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+
+// session-root.ts
+import { closeSync, openSync, readdirSync, readSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
 import { join as join2 } from "node:path";
+var sessionStateDir = join2(process.env.COPILOT_HOME || join2(homedir2(), ".copilot"), "session-state");
+var CHUNK_BYTES = 4096;
+function readFirstLine(path) {
+  const fd = openSync(path, "r");
+  try {
+    const chunks = [];
+    for (;; ) {
+      const chunk = Buffer.alloc(CHUNK_BYTES);
+      const read = readSync(fd, chunk, 0, CHUNK_BYTES, null);
+      const newline = chunk.subarray(0, read).indexOf(10);
+      chunks.push(chunk.subarray(0, newline === -1 ? read : newline));
+      if (newline !== -1 || read === 0)
+        return Buffer.concat(chunks).toString("utf8");
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
+function readSessionStart(sessionDir) {
+  try {
+    const event = JSON.parse(readFirstLine(join2(sessionDir, "events.jsonl")));
+    const { sessionId, startTime } = event?.data ?? {};
+    if (event.type !== "session.start" || typeof event.id !== "string")
+      return;
+    if (typeof sessionId !== "string" || typeof startTime !== "string" || Number.isNaN(Date.parse(startTime)))
+      return;
+    return { sessionId, startTime, rootEventId: event.id };
+  } catch {
+    return;
+  }
+}
+function conversationRoot(stateDir, sessionId) {
+  const own = readSessionStart(join2(stateDir, sessionId));
+  if (own === undefined)
+    return;
+  let root = own;
+  for (const id of readdirSync(stateDir)) {
+    if (id === sessionId)
+      continue;
+    const start = readSessionStart(join2(stateDir, id));
+    if (start?.rootEventId !== own.rootEventId)
+      continue;
+    const delta = Date.parse(start.startTime) - Date.parse(root.startTime);
+    if (delta < 0 || delta === 0 && start.sessionId < root.sessionId)
+      root = start;
+  }
+  return { sessionId: root.sessionId, startTime: root.startTime };
+}
+
+// launch.ts
 var RESUME_FLAGS = { "-r": true, "--resume": true, "--continue": true };
 function hasResumeFlag(parentArgs) {
   return parentArgs.split(/\s+/).some((token) => Object.hasOwn(RESUME_FLAGS, token) || token.startsWith("--resume="));
@@ -216,10 +270,9 @@ function isThrowawayLaunch(sessionId) {
   try {
     if (!hasResumeFlag(execFileSync("ps", ["-o", "args=", "-p", String(process.ppid)], { encoding: "utf8" })))
       return false;
-    const sessionState = join2(process.env.COPILOT_HOME || join2(homedir2(), ".copilot"), "session-state");
-    if (existsSync(join2(sessionState, sessionId, "events.jsonl")))
+    if (existsSync(join3(sessionStateDir, sessionId, "events.jsonl")))
       return false;
-    return readdirSync(sessionState).some((id) => id !== sessionId && existsSync(join2(sessionState, id, "events.jsonl")));
+    return readdirSync2(sessionStateDir).some((id) => id !== sessionId && existsSync(join3(sessionStateDir, id, "events.jsonl")));
   } catch {
     return false;
   }
@@ -257,17 +310,19 @@ Before your final reply, append each location and result your reply does not spe
 
 // extension.ts
 var SETUP_WAIT_MS = 5000;
-var foldHome = process.env.AGENT_FOLD_HOME || join3(homedir3(), ".agent-fold");
+var foldHome = process.env.AGENT_FOLD_HOME || join4(homedir3(), ".agent-fold");
 function readIndex(dir) {
   try {
-    return readFileSync(join3(dir, "INDEX.md"), "utf8");
+    return readFileSync(join4(dir, "INDEX.md"), "utf8");
   } catch {
     return "";
   }
 }
 async function injectionFor(session, sessionId) {
-  const { startTime, workingDirectory } = await session.rpc.metadata.snapshot();
-  const dir = foldDir({ foldHome, projectRoot: await findProjectRoot(workingDirectory), startTime, sessionId });
+  const snapshot = await session.rpc.metadata.snapshot();
+  const { startTime, sessionId: rootId } = conversationRoot(sessionStateDir, sessionId) ?? { startTime: snapshot.startTime, sessionId };
+  const projectRoot = await findProjectRoot(snapshot.workingDirectory);
+  const dir = foldDir({ foldHome, projectRoot, startTime, sessionId: rootId });
   await mkdir(dir, { recursive: true });
   let run;
   return {

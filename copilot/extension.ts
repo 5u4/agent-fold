@@ -9,6 +9,7 @@ import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
 import { formats } from "./formats";
 import { isThrowawayLaunch } from "./launch";
 import { indexMessage } from "./session-index";
+import { conversationRoot, sessionStateDir } from "./session-root";
 
 const SETUP_WAIT_MS = 5000;
 
@@ -23,8 +24,10 @@ function readIndex(dir: string): string {
 }
 
 async function injectionFor(session: CopilotSession, sessionId: string): Promise<Injection> {
-  const { startTime, workingDirectory } = await session.rpc.metadata.snapshot();
-  const dir = foldDir({ foldHome, projectRoot: await findProjectRoot(workingDirectory), startTime, sessionId });
+  const snapshot = await session.rpc.metadata.snapshot();
+  const { startTime, sessionId: rootId } = conversationRoot(sessionStateDir, sessionId) ?? { startTime: snapshot.startTime, sessionId };
+  const projectRoot = await findProjectRoot(snapshot.workingDirectory);
+  const dir = foldDir({ foldHome, projectRoot, startTime, sessionId: rootId });
   await mkdir(dir, { recursive: true });
   let run: { key: string; text: string } | undefined;
   return {
