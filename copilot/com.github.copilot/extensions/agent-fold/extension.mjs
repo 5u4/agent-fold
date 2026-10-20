@@ -326,10 +326,19 @@ try {
   console.error(`agent-fold: this extension process does not fold: ${error instanceof Error ? error.message : error}`);
   process.exit(0);
 }
+function keepFoldHomeGranted(session, sessionId) {
+  const { paths } = session.rpc.permissions;
+  const grant = () => paths.isPathWithinAllowedDirectories({ path: foldHome }).then(({ allowed }) => allowed || paths.add({ path: foldHome })).catch((error) => console.error(`agent-fold: could not grant ${foldHome} to session ${sessionId}: ${error}`));
+  session.on("session.custom_agents_updated", grant);
+  session.on("session.skills_loaded", grant);
+}
 function foldSession(sessionId) {
   if (handler.sessions.has(sessionId))
     return;
-  handler.sessions.set(sessionId, client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined).then((session) => injectionFor(session, sessionId)).catch((error) => {
+  handler.sessions.set(sessionId, client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined).then((session) => {
+    keepFoldHomeGranted(session, sessionId);
+    return injectionFor(session, sessionId);
+  }).catch((error) => {
     console.error(`agent-fold: not folding session ${sessionId}, requests pass through: ${error}`);
     return;
   }));

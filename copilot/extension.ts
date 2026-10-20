@@ -82,13 +82,28 @@ try {
   process.exit(0);
 }
 
+function keepFoldHomeGranted(session: CopilotSession, sessionId: string): void {
+  const { paths } = session.rpc.permissions;
+  const grant = () =>
+    paths
+      .isPathWithinAllowedDirectories({ path: foldHome })
+      .then(({ allowed }) => allowed || paths.add({ path: foldHome }))
+      .catch(error => console.error(`agent-fold: could not grant ${foldHome} to session ${sessionId}: ${error}`));
+  // Copilot CLI 1.0.100: when the TUI switches back to a session it replaces the session's additional directories within about 30 ms after session.foreground, then reloads the session's agents and skills.
+  session.on("session.custom_agents_updated", grant);
+  session.on("session.skills_loaded", grant);
+}
+
 function foldSession(sessionId: string): void {
   if (handler.sessions.has(sessionId)) return;
   handler.sessions.set(
     sessionId,
     client
       .resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined)
-      .then(session => injectionFor(session, sessionId))
+      .then(session => {
+        keepFoldHomeGranted(session, sessionId);
+        return injectionFor(session, sessionId);
+      })
       .catch(error => {
         console.error(`agent-fold: not folding session ${sessionId}, requests pass through: ${error}`);
         return undefined;

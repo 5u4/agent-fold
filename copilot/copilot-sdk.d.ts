@@ -14,7 +14,16 @@ declare module "@github/copilot-sdk" {
   }
 
   export interface CopilotSession {
-    readonly rpc: { metadata: { snapshot(): Promise<{ startTime: string; workingDirectory: string }> } };
+    readonly rpc: {
+      metadata: { snapshot(): Promise<{ startTime: string; workingDirectory: string }> };
+      permissions: {
+        paths: {
+          isPathWithinAllowedDirectories(params: { path: string }): Promise<{ allowed: boolean }>;
+          add(params: { path: string }): Promise<unknown>;
+        };
+      };
+    };
+    on(eventType: "session.custom_agents_updated" | "session.skills_loaded", handler: () => void): () => void;
   }
 
   export class CopilotClient {
