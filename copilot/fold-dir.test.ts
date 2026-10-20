@@ -26,8 +26,8 @@ test("a start time with a zone offset is keyed in UTC", () => {
   );
 });
 
-test("a project outside home and tmp uses the absolute form of its real path", () => {
-  expect(projectSlug("/tmp")).toBe("--private-tmp--");
+test("a project outside home and tmp uses the absolute form of its path", () => {
+  expect(projectSlug("/fold-outside/project", "/fold-home", "/fold-tmp")).toBe("--fold-outside-project--");
 });
 
 test("worktrees of one repo share the main checkout's slug, and a dir outside git uses its own", async () => {
