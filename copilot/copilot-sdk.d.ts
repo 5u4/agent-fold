@@ -21,6 +21,7 @@ declare module "@github/copilot-sdk" {
     constructor(options: { _internalConnection: { kind: "parent-process" }; requestHandler: CopilotRequestHandler });
     connection: JsonRpcConnection | null;
     start(): Promise<void>;
+    onLifecycle(type: "session.foreground", handler: (event: { sessionId: string }) => void): () => void;
     resumeSessionForExtension(
       sessionId: string,
       config: { additionalDirectories: string[]; suppressResumeEvent: boolean },
