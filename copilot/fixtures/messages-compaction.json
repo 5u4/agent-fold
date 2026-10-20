@@ -1,0 +1,74 @@
+{
+  "model": "claude-sonnet-5",
+  "max_tokens": 32000,
+  "system": [
+    {
+      "type": "text",
+      "text": "You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are an interactive tool that helps users with …",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    {
+      "type": "text",
+      "text": "<version_information>Version number: 1.0.96</version_information>\n\n<model_information>Powered by <model name=\"Claude Son…",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Some of the conversation history has been summarized to free up context.\n\nYou were originally given instructions from a …"
+        },
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-13T12:36:55.072-07:00</current_datetime>\n\nPost-compaction turn: use a tool to read config.txt …"
+        },
+        {
+          "type": "text",
+          "text": "<system_reminder>\nIMPORTANT: The tools listed below are deferred — their full definitions are NOT loaded, so you cannot …"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_011tvAZ8DdNsWw8DCeLzQBjp",
+          "name": "view",
+          "input": {
+            "path": "/private/tmp/fold-probe-a/config.txt"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_011tvAZ8DdNsWw8DCeLzQBjp",
+          "content": "mode=fast\nretries=3\ncolor=blue\n",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "temperature": 1,
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "output_config": {
+    "effort": "medium"
+  },
+  "stream": true
+}

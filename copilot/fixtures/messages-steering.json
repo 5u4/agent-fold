@@ -1,0 +1,265 @@
+{
+  "model": "claude-sonnet-5",
+  "max_tokens": 32000,
+  "system": [
+    {
+      "type": "text",
+      "text": "You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are an interactive tool that helps users with …",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    },
+    {
+      "type": "text",
+      "text": "<version_information>Version number: 1.0.96</version_information>\n\n<model_information>Powered by <model name=\"Claude Son…",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-15T22:30:21.896-07:00</current_datetime>\n\nStep by step, one shell command per tool call, never…"
+        },
+        {
+          "type": "text",
+          "text": "<system_reminder>\nIMPORTANT: The tools listed below are deferred — their full definitions are NOT loaded, so you cannot …"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "signature": "EoEECuUCCBIYAipA1LFyyFMG…",
+          "thinking": "I'll work through this one command at a time, running them sequentially rather than all at once.\n\n",
+          "type": "thinking"
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01NF7HpjdLLws63hJZvm1Bde",
+          "name": "bash",
+          "input": {
+            "command": "cat data.txt",
+            "description": "Show contents of data.txt"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01NF7HpjdLLws63hJZvm1Bde",
+          "content": "tok-39110-36363\n<shellId: 0 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01LMqoH6LiEPZJoQxj1Vmfp7",
+          "name": "bash",
+          "input": {
+            "command": "sleep 10",
+            "description": "Sleep for 10 seconds"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01LMqoH6LiEPZJoQxj1Vmfp7",
+          "content": "<command with shellId: 1 moved to background by the user. You will be automatically notified when it completes. The user…"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "STEER-E: also run echo steered as a final extra command."
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_016zebejs99DFafxtcs5Dqnr",
+          "name": "read_bash",
+          "input": {
+            "shellId": "1",
+            "delay": 10
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_016zebejs99DFafxtcs5Dqnr",
+          "content": "<command with shellId: 1 is running in the background after the user moved it off the main turn. Respond to the user now…"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Noted — I'll add `echo steered` as a final extra command after `echo four`."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<system_notification>\nShell command \"Sleep for 10 seconds\" (shellId: 1) has completed successfully.\n</system_notificatio…"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "5458c644-6bfe-42a1-99d7-2ecbb6dfe9c0",
+          "name": "read_bash",
+          "input": {
+            "shellId": "1",
+            "delay": 0
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "5458c644-6bfe-42a1-99d7-2ecbb6dfe9c0",
+          "content": "\n<shellId: 1 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01S2oDF4gPsZUy93MxGrsabV",
+          "name": "bash",
+          "input": {
+            "command": "ls",
+            "description": "List files in current directory"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01S2oDF4gPsZUy93MxGrsabV",
+          "content": "an.py\ndata.txt\ne.sh\norig\nREADME.md\nruns\nto.sh\n<shellId: 2 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01HH6RPenTk2zVVrV2Zo3En3",
+          "name": "bash",
+          "input": {
+            "command": "echo four",
+            "description": "Echo the word four"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01HH6RPenTk2zVVrV2Zo3En3",
+          "content": "four\n<shellId: 3 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Dr1zZCzuCTUCNUmwkKBmaf",
+          "name": "bash",
+          "input": {
+            "command": "echo steered",
+            "description": "Echo the word steered"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01Dr1zZCzuCTUCNUmwkKBmaf",
+          "content": "steered\n<shellId: 4 completed with exit code 0>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "done"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<current_datetime>2026-10-15T22:31:22.609-07:00</current_datetime>\n\nUse a shell command to run: echo second-run. Then re…",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "temperature": 1,
+  "thinking": {
+    "type": "adaptive",
+    "display": "summarized"
+  },
+  "output_config": {
+    "effort": "medium"
+  },
+  "stream": true
+}
