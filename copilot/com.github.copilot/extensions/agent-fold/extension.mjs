@@ -310,6 +310,7 @@ Before your final reply, append each location and result your reply does not spe
 
 // extension.ts
 var SETUP_WAIT_MS = 5000;
+var LEFT_LAUNCH_JOIN_DELAY_MS = 1000;
 var foldHome = process.env.AGENT_FOLD_HOME || join4(homedir3(), ".agent-fold");
 function readIndex(dir) {
   try {
@@ -387,10 +388,12 @@ function keepFoldHomeGranted(session, sessionId) {
   session.on("session.custom_agents_updated", grant);
   session.on("session.skills_loaded", grant);
 }
+var joined = [];
 function foldSession(sessionId) {
   if (handler.sessions.has(sessionId))
     return;
   handler.sessions.set(sessionId, client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined).then((session) => {
+    joined.push(session);
     keepFoldHomeGranted(session, sessionId);
     return injectionFor(session, sessionId);
   }).catch((error) => {
@@ -405,5 +408,14 @@ if (connection === null) {
   const send = connection.sendRequest.bind(connection);
   connection.sendRequest = (method, params, ...rest) => send(method, method === "session.resume" ? { ...params, requestPermission: false } : params, ...rest);
   foldSession(launchSessionId);
-  client.onLifecycle("session.foreground", (event) => foldSession(event.sessionId));
+  let foreground = launchSessionId;
+  client.onLifecycle("session.foreground", ({ sessionId }) => {
+    const leftLaunchSession = foreground === launchSessionId;
+    foreground = sessionId;
+    if (leftLaunchSession)
+      setTimeout(foldSession, LEFT_LAUNCH_JOIN_DELAY_MS, sessionId);
+    else
+      foldSession(sessionId);
+  });
+  process.once("SIGTERM", () => Promise.allSettled(joined.map((session) => session.disconnect())).then(() => process.exit(0)));
 }

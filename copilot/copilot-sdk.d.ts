@@ -24,6 +24,7 @@ declare module "@github/copilot-sdk" {
       };
     };
     on(eventType: "session.custom_agents_updated" | "session.skills_loaded", handler: () => void): () => void;
+    disconnect(): Promise<void>;
   }
 
   export class CopilotClient {

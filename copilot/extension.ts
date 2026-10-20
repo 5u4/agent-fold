@@ -12,6 +12,7 @@ import { indexMessage } from "./session-index";
 import { conversationRoot, sessionStateDir } from "./session-root";
 
 const SETUP_WAIT_MS = 5000;
+const LEFT_LAUNCH_JOIN_DELAY_MS = 1000;
 
 const foldHome = process.env.AGENT_FOLD_HOME || join(homedir(), ".agent-fold");
 
@@ -97,6 +98,8 @@ function keepFoldHomeGranted(session: CopilotSession, sessionId: string): void {
   session.on("session.skills_loaded", grant);
 }
 
+const joined: CopilotSession[] = [];
+
 function foldSession(sessionId: string): void {
   if (handler.sessions.has(sessionId)) return;
   handler.sessions.set(
@@ -104,6 +107,7 @@ function foldSession(sessionId: string): void {
     client
       .resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined)
       .then(session => {
+        joined.push(session);
         keepFoldHomeGranted(session, sessionId);
         return injectionFor(session, sessionId);
       })
@@ -123,5 +127,14 @@ if (connection === null) {
   connection.sendRequest = (method, params, ...rest) =>
     send(method, method === "session.resume" ? { ...(params as object), requestPermission: false } : params, ...rest);
   foldSession(launchSessionId);
-  client.onLifecycle("session.foreground", event => foldSession(event.sessionId));
+  let foreground = launchSessionId;
+  client.onLifecycle("session.foreground", ({ sessionId }) => {
+    const leftLaunchSession = foreground === launchSessionId;
+    foreground = sessionId;
+    // Copilot CLI 1.0.100: /clear closes the session it leaves within about 100 ms of this event, which stops this process when that is the launch session, and a session joined by a provider that then dies hangs.
+    if (leftLaunchSession) setTimeout(foldSession, LEFT_LAUNCH_JOIN_DELAY_MS, sessionId);
+    else foldSession(sessionId);
+  });
+  // Copilot CLI 1.0.100: a session stays loaded while this connection holds it, so detaching lets a later /resume reload it without the dead provider.
+  process.once("SIGTERM", () => Promise.allSettled(joined.map(session => session.disconnect())).then(() => process.exit(0)));
 }
