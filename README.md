@@ -26,3 +26,19 @@ Restart omp to load the plugin.
 omp plugin uninstall agent-fold@agent-fold
 omp plugin marketplace remove agent-fold
 ```
+
+### GitHub Copilot CLI
+
+```sh
+copilot plugin marketplace add 5u4/agent-fold
+copilot plugin install agent-fold@agent-fold
+```
+
+Start Copilot CLI with `copilot --experimental` to load the plugin.
+
+#### Uninstall
+
+```sh
+copilot plugin uninstall agent-fold@agent-fold
+copilot plugin marketplace remove agent-fold
+```
