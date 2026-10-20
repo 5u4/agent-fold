@@ -9,7 +9,10 @@ const scenario: Pick<Scenario<void>, "setup" | "turns"> = {
   async setup(workdir) {
     writeFileSync(join(workdir, "nonce.txt"), "NONCE-skill\n");
     mkdirSync(join(workdir, ".omp", "skills", "probe"), { recursive: true });
-    writeFileSync(join(workdir, ".omp", "skills", "probe", "SKILL.md"), "---\nname: probe\ndescription: Probe skill.\n---\n\nPROBE-SKILL-BODY\n");
+    writeFileSync(
+      join(workdir, ".omp", "skills", "probe", "SKILL.md"),
+      "---\nname: probe\ndescription: Probe skill.\n---\n\nPROBE-SKILL-BODY\n",
+    );
   },
   turns: [
     {

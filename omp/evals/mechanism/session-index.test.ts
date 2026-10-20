@@ -9,7 +9,8 @@ const write = (content: string) => ({ toolCall: { name: "write", arguments: { pa
 function view(messages: Message[]): string[] {
   return messages.flatMap(message => {
     if (message.role !== "developer") return compactMessage(message);
-    const text = typeof message.content === "string" ? message.content : message.content.flatMap(b => (b.type === "text" ? [b.text] : [])).join("");
+    const text =
+      typeof message.content === "string" ? message.content : message.content.flatMap(b => (b.type === "text" ? [b.text] : [])).join("");
     const index = text.match(/^Session index `.*\/INDEX\.md` at the start of this run:\n\n([\s\S]*)\n\nBefore your final reply/);
     return [index ? `index:${index[1]}` : "developer"];
   });
