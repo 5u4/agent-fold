@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { homedir as homedir3 } from "node:os";
-import { join as join4 } from "node:path";
+import { join as join3 } from "node:path";
 import { CopilotClient, CopilotRequestHandler } from "@github/copilot-sdk";
 
 // context/fold.md
@@ -206,10 +206,35 @@ ${rules}` };
 };
 var formats = { "/responses": responses, "/v1/messages": messages };
 
-// launch.ts
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync as readdirSync2 } from "node:fs";
-import { join as join3 } from "node:path";
+// session-index.ts
+var INDEX_MAX_LINES = 300;
+var INDEX_MAX_BYTES = 153600;
+function capIndex(text) {
+  const lines = text.split(`
+`);
+  if (lines.at(-1) === "")
+    lines.pop();
+  if (lines.length <= INDEX_MAX_LINES && Buffer.byteLength(text) <= INDEX_MAX_BYTES)
+    return text;
+  let kept = 0;
+  let bytes = 0;
+  while (kept < INDEX_MAX_LINES) {
+    const next = bytes + Buffer.byteLength(lines[kept]) + 1;
+    if (next > INDEX_MAX_BYTES)
+      break;
+    bytes = next;
+    kept++;
+  }
+  return `${lines.slice(0, kept).map((line) => `${line}
+`).join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
+}
+function indexMessage(dir, text) {
+  return `Session index \`${dir}/INDEX.md\` at the start of this run:
+
+${text.trim() === "" ? "(empty)" : capIndex(text)}
+
+Before your final reply, append each location and result your reply does not spell out, as the Session index rules say.`;
+}
 
 // session-root.ts
 import { closeSync, openSync, readdirSync, readSync } from "node:fs";
@@ -264,60 +289,13 @@ function conversationRoot(stateDir, sessionId) {
   return { sessionId: root.sessionId, startTime: root.startTime };
 }
 
-// launch.ts
-var RESUME_FLAGS = { "-r": true, "--resume": true, "--continue": true };
-function hasResumeFlag(parentArgs) {
-  return parentArgs.split(/\s+/).some((token) => Object.hasOwn(RESUME_FLAGS, token) || token.startsWith("--resume="));
-}
-function isThrowawayLaunch(sessionId) {
-  try {
-    if (!hasResumeFlag(execFileSync("ps", ["-o", "args=", "-p", String(process.ppid)], { encoding: "utf8" })))
-      return false;
-    if (existsSync(join3(sessionStateDir, sessionId, "events.jsonl")))
-      return false;
-    return readdirSync2(sessionStateDir).some((id) => id !== sessionId && existsSync(join3(sessionStateDir, id, "events.jsonl")));
-  } catch {
-    return false;
-  }
-}
-
-// session-index.ts
-var INDEX_MAX_LINES = 300;
-var INDEX_MAX_BYTES = 153600;
-function capIndex(text) {
-  const lines = text.split(`
-`);
-  if (lines.at(-1) === "")
-    lines.pop();
-  if (lines.length <= INDEX_MAX_LINES && Buffer.byteLength(text) <= INDEX_MAX_BYTES)
-    return text;
-  let kept = 0;
-  let bytes = 0;
-  while (kept < INDEX_MAX_LINES) {
-    const next = bytes + Buffer.byteLength(lines[kept]) + 1;
-    if (next > INDEX_MAX_BYTES)
-      break;
-    bytes = next;
-    kept++;
-  }
-  return `${lines.slice(0, kept).map((line) => `${line}
-`).join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
-}
-function indexMessage(dir, text) {
-  return `Session index \`${dir}/INDEX.md\` at the start of this run:
-
-${text.trim() === "" ? "(empty)" : capIndex(text)}
-
-Before your final reply, append each location and result your reply does not spell out, as the Session index rules say.`;
-}
-
 // extension.ts
 var SETUP_WAIT_MS = 5000;
 var LEFT_LAUNCH_JOIN_DELAY_MS = 1000;
-var foldHome = process.env.AGENT_FOLD_HOME || join4(homedir3(), ".agent-fold");
+var foldHome = process.env.AGENT_FOLD_HOME || join3(homedir3(), ".agent-fold");
 function readIndex(dir) {
   try {
-    return readFileSync(join4(dir, "INDEX.md"), "utf8");
+    return readFileSync(join3(dir, "INDEX.md"), "utf8");
   } catch {
     return "";
   }
@@ -374,7 +352,7 @@ class FoldHandler extends CopilotRequestHandler {
   }
 }
 var launchSessionId = process.env.SESSION_ID;
-if (!launchSessionId || isThrowawayLaunch(launchSessionId))
+if (!launchSessionId)
   process.exit(0);
 var handler = new FoldHandler;
 var client = new CopilotClient({ _internalConnection: { kind: "parent-process" }, requestHandler: handler });

@@ -7,7 +7,6 @@ import rulesTemplate from "./context/fold.md" with { type: "text" };
 import { type Injection, rewriteBody } from "./fold";
 import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
 import { formats } from "./formats";
-import { isThrowawayLaunch } from "./launch";
 import { indexMessage } from "./session-index";
 import { conversationRoot, sessionStateDir } from "./session-root";
 
@@ -74,7 +73,7 @@ class FoldHandler extends CopilotRequestHandler {
 }
 
 const launchSessionId = process.env.SESSION_ID;
-if (!launchSessionId || isThrowawayLaunch(launchSessionId)) process.exit(0);
+if (!launchSessionId) process.exit(0);
 
 const handler = new FoldHandler();
 const client = new CopilotClient({ _internalConnection: { kind: "parent-process" }, requestHandler: handler });
