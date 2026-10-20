@@ -52,7 +52,9 @@ export const responses: Format<ResponsesItem> = {
     const input = arrayAt<ResponsesItem>(body, "input") ?? [];
     const [first, ...rest] = input;
     if (first?.role !== "system") return { ...body, instructions: rules };
-    return { ...body, input: [{ ...first, content: [...parts(first.content), { type: "input_text", text: rules }] }, ...rest] };
+    const content =
+      typeof first.content === "string" ? `${first.content}\n\n${rules}` : [...(first.content ?? []), { type: "input_text", text: rules }];
+    return { ...body, input: [{ ...first, content }, ...rest] };
   },
   indexItem: text => ({ type: "message", role: "user", content: [{ type: "input_text", text }] }),
   runKey: item => texts(item.content).join("\n"),

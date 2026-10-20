@@ -63,6 +63,13 @@ test("responses: a system input item gets the rules when there are no instructio
   });
 });
 
+test("responses: a system input item with string content gets the rules appended to its string", () => {
+  const prompt = { type: "message", role: "user", content: [{ type: "input_text", text: "<current_datetime>t</current_datetime>\n\nhi" }] };
+  expect(rewriteBody(responses, { input: [{ role: "system", content: "sys" }, prompt] }, injection)).toEqual({
+    input: [{ role: "system", content: "sys\n\nRULES" }, prompt, responsesIndex],
+  });
+});
+
 test("messages: a finished run keeps the prompt, steering, notifications and text-only replies; tool turns go", async () => {
   const body = await fixture("messages-steering");
   const list = body.messages as JsonObject[];
