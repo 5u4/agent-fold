@@ -97,16 +97,17 @@ function keepFoldHomeGranted(session: CopilotSession, sessionId: string): void {
   session.on("session.skills_loaded", grant);
 }
 
-const joined: CopilotSession[] = [];
+const joins: Promise<CopilotSession>[] = [];
+let stopping = false;
 
 function foldSession(sessionId: string): void {
-  if (handler.sessions.has(sessionId)) return;
+  if (stopping || handler.sessions.has(sessionId)) return;
+  const join = client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined);
+  joins.push(join);
   handler.sessions.set(
     sessionId,
-    client
-      .resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined)
+    join
       .then(session => {
-        joined.push(session);
         keepFoldHomeGranted(session, sessionId);
         return injectionFor(session, sessionId);
       })
@@ -135,5 +136,8 @@ if (connection === null) {
     else foldSession(sessionId);
   });
   // Copilot CLI 1.0.100: a session stays loaded while this connection holds it, so detaching lets a later /resume reload it without the dead provider.
-  process.once("SIGTERM", () => Promise.allSettled(joined.map(session => session.disconnect())).then(() => process.exit(0)));
+  process.once("SIGTERM", () => {
+    stopping = true;
+    Promise.allSettled(joins.map(join => join.then(session => session.disconnect()))).then(() => process.exit(0));
+  });
 }

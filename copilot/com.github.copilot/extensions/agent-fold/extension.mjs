@@ -148,7 +148,7 @@ var responses = {
     if (item.role === "user")
       return isBoundary(item.content) ? "boundary" : "steering";
     if (item.role === "assistant")
-      return hasText(item.content) ? "reply" : "drop";
+      return item.phase !== "commentary" && hasText(item.content) ? "reply" : "drop";
     return "keep";
   },
   keptInFold: (item) => item,
@@ -369,12 +369,14 @@ function keepFoldHomeGranted(session, sessionId) {
   session.on("session.custom_agents_updated", grant);
   session.on("session.skills_loaded", grant);
 }
-var joined = [];
+var joins = [];
+var stopping = false;
 function foldSession(sessionId) {
-  if (handler.sessions.has(sessionId))
+  if (stopping || handler.sessions.has(sessionId))
     return;
-  handler.sessions.set(sessionId, client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined).then((session) => {
-    joined.push(session);
+  const join = client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined);
+  joins.push(join);
+  handler.sessions.set(sessionId, join.then((session) => {
     keepFoldHomeGranted(session, sessionId);
     return injectionFor(session, sessionId);
   }).catch((error) => {
@@ -398,5 +400,8 @@ if (connection === null) {
     else
       foldSession(sessionId);
   });
-  process.once("SIGTERM", () => Promise.allSettled(joined.map((session) => session.disconnect())).then(() => process.exit(0)));
+  process.once("SIGTERM", () => {
+    stopping = true;
+    Promise.allSettled(joins.map((join) => join.then((session) => session.disconnect()))).then(() => process.exit(0));
+  });
 }

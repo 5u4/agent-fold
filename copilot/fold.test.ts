@@ -34,6 +34,23 @@ test("responses: a run that stopped after a tool output stays whole", async () =
   expect(out?.input).toEqual([...unfinished, responsesIndex]);
 });
 
+test("responses: commentary between tool calls goes with the tools; the final answer stays", () => {
+  const userText = (text: string) => ({ type: "message", role: "user", content: [{ type: "input_text", text }] });
+  const say = (phase: string, text: string) => ({ type: "message", role: "assistant", phase, content: [{ type: "output_text", text }] });
+  const first = userText("<current_datetime>1</current_datetime>\n\nfirst");
+  const answer = say("final_answer", "done");
+  const next = userText("<current_datetime>2</current_datetime>\n\nnext");
+  const input = [
+    first,
+    say("commentary", "Let me look."),
+    { type: "function_call", call_id: "c1", name: "view", arguments: "{}" },
+    { type: "function_call_output", call_id: "c1", output: "file" },
+    answer,
+    next,
+  ];
+  expect(rewriteBody(responses, { input }, injection)?.input).toEqual([first, answer, next, responsesIndex]);
+});
+
 test("responses: after compaction the summary starts its own run and the index follows the new prompt", async () => {
   const body = await fixture("responses-compaction");
   const input = body.input as JsonObject[];

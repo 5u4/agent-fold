@@ -2,7 +2,7 @@ import { type Format, type JsonObject, startsRun } from "./fold";
 
 type Part = { type: string; text?: string };
 
-type ResponsesItem = { type?: string; role?: string; content?: string | Part[] };
+type ResponsesItem = { type?: string; role?: string; phase?: string; content?: string | Part[] };
 
 type Message = { role: string; content: string | Part[] };
 
@@ -43,7 +43,7 @@ export const responses: Format<ResponsesItem> = {
   classify(item) {
     if (item.type !== undefined && item.type !== "message") return RESPONSES_DROP[item.type] === true ? "drop" : "keep";
     if (item.role === "user") return isBoundary(item.content) ? "boundary" : "steering";
-    if (item.role === "assistant") return hasText(item.content) ? "reply" : "drop";
+    if (item.role === "assistant") return item.phase !== "commentary" && hasText(item.content) ? "reply" : "drop";
     return "keep";
   },
   keptInFold: item => item,
