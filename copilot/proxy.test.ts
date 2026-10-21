@@ -196,6 +196,32 @@ test("status proves the proxy only to a caller holding its secret", async () => 
   expect(seen).toEqual([]);
 });
 
+test("a status relayed from another port does not prove the proxy, even with its fields rewritten", async () => {
+  const port = proxy.port ?? 0;
+  const relays = [{}, { protocol: PROTOCOL + 1 }, { sessionSeen: true }].map(rewrite =>
+    Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      async fetch(request) {
+        const url = new URL(request.url);
+        const status = await (await send(port, `${url.pathname}${url.search}`)).json();
+        return Response.json({ ...status, ...rewrite });
+      },
+    }),
+  );
+  try {
+    const relayed = await Promise.all(relays.map(relay => queryProxy(relay.port ?? 0, SECRET, { session: { id: SESSION, since: 0 } })));
+    expect(relayed).toEqual([undefined, undefined, undefined]);
+    expect(await queryProxy(port, SECRET, { session: { id: SESSION, since: 0 } })).toEqual({
+      protocol: PROTOCOL,
+      launchSeen: false,
+      sessionSeen: false,
+    });
+  } finally {
+    for (const relay of relays) relay.stop(true);
+  }
+});
+
 test("an SSE response streams through chunk by chunk", async () => {
   const response = await send(proxy.port ?? 0, "/stream", modelRequest("conversation-agent", "{}"));
   const reader = (response.body as ReadableStream<Uint8Array>).getReader();

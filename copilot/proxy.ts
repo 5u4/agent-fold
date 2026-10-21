@@ -196,18 +196,18 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
     };
   }
 
-  function status(url: URL): Response {
+  function status(url: URL, port: number): Response {
     const nonce = url.searchParams.get("nonce");
     if (!nonce) return new Response("agent-fold: nonce required\n", { status: 400 });
     const launch = url.searchParams.get("launch");
     const session = url.searchParams.get("session");
     const lastSeen = session === null ? undefined : sessionLastSeen.get(session.toLowerCase());
-    return Response.json({
+    const fields = {
       protocol: PROTOCOL,
-      proof: proof(secret, nonce),
       launchSeen: launch !== null && launches.has(launch.toLowerCase()),
       sessionSeen: lastSeen !== undefined && lastSeen >= Number(url.searchParams.get("since") ?? Number.NaN),
-    });
+    };
+    return Response.json({ ...fields, proof: proof(secret, nonce, port, fields) });
   }
 
   async function handle(request: Request, port: number): Promise<{ response: Response; folded: boolean }> {
@@ -218,7 +218,7 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
     if (launch !== undefined) launches.add(launch);
     const sessionId = request.headers.get("x-client-session-id");
     if (sessionId !== null && UUID.test(sessionId)) sessionLastSeen.set(sessionId.toLowerCase(), Date.now());
-    if (target.kind === "status") return { response: status(url), folded: false };
+    if (target.kind === "status") return { response: status(url, port), folded: false };
     if (target.kind === "rejectUpgrade") return { response: new Response(null, { status: 404 }), folded: false };
     return forward(request, path, url.search, target);
   }

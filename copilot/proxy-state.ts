@@ -57,8 +57,9 @@ export function readSecret(): string | undefined {
   }
 }
 
-export function proof(secret: string, nonce: string): string {
-  return createHmac("sha256", secret).update(nonce).digest("hex");
+export function proof(secret: string, nonce: string, port: number, status: ProxyStatus): string {
+  const signed = JSON.stringify([nonce, port, status.protocol, status.launchSeen, status.sessionSeen]);
+  return createHmac("sha256", secret).update(signed).digest("hex");
 }
 
 function isCount(value: unknown): value is number {
@@ -154,10 +155,11 @@ export async function queryProxy(
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) return undefined;
-    const status = await response.json();
-    if (typeof status?.proof !== "string" || !sameHex(status.proof, proof(secret, nonce))) return undefined;
-    if (typeof status.protocol !== "number") return undefined;
-    return { protocol: status.protocol, launchSeen: status.launchSeen === true, sessionSeen: status.sessionSeen === true };
+    const { proof: received, protocol, launchSeen, sessionSeen } = await response.json();
+    if (typeof received !== "string" || typeof protocol !== "number" || typeof launchSeen !== "boolean" || typeof sessionSeen !== "boolean")
+      return undefined;
+    const status = { protocol, launchSeen, sessionSeen };
+    return sameHex(received, proof(secret, nonce, port, status)) ? status : undefined;
   } catch {
     return undefined;
   }
