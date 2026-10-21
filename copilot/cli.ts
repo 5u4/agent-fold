@@ -6,7 +6,7 @@ import { constants } from "node:os";
 import { type Config, readConfig, type Target } from "./config";
 import { configPath, foldHome, logPath, sessionStateDir } from "./paths";
 import { startProxy } from "./proxy";
-import { claimState, ensureSecret, liveState, PROTOCOL, type ProxyState, queryProxy, removeState } from "./proxy-state";
+import { claimState, ensureSecret, liveState, PROTOCOL, type ProxyState, queryProxy } from "./proxy-state";
 
 const USAGE = "usage: agent-fold proxy | agent-fold copilot [args...] | agent-fold gh-app [args...]";
 
@@ -119,10 +119,7 @@ async function serveProxy(): Promise<void> {
     );
     process.exit(0);
   }
-  const stop = () => {
-    removeState(claim.epoch);
-    process.exit(0);
-  };
+  const stop = () => process.exit(0);
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
 }

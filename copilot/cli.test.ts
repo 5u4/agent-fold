@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -110,6 +112,53 @@ test("concurrent launches over a stale state naming a dead port agree on one fre
   const fresh = await launchTogether(8);
   expect(fresh.port).not.toBe(deadPort);
   expect(readdirSync(proxyDir()).filter(name => name.startsWith("proxy-"))).toEqual(["proxy-2.json"]);
+});
+
+test("a claimant delayed past another proxy's shutdown yields to the proxy that claimed after it", async () => {
+  const sockets: Socket[] = [];
+  const stalled = Promise.withResolvers<void>();
+  const stall = createServer(socket => {
+    sockets.push(socket);
+    stalled.resolve();
+  });
+  stall.listen(0, "127.0.0.1");
+  await once(stall, "listening");
+  const address = stall.address();
+  const stalePort = typeof address === "object" && address !== null ? address.port : 0;
+  mkdirSync(proxyDir(), { recursive: true });
+  writeFileSync(join(proxyDir(), "proxy-1.json"), JSON.stringify({ protocol: 1, pid: 999999, port: stalePort }));
+  const spawnProxy = () => {
+    const proc = Bun.spawn(["bun", CLI, "proxy"], { env, stdout: "ignore", stderr: "ignore" });
+    started.add(proc.pid);
+    return proc;
+  };
+  const ownedBy = async (pid: number) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      try {
+        if (published().pid === pid) return;
+      } catch {}
+      await Bun.sleep(20);
+    }
+    throw new Error(`proxy ${pid} never claimed the state`);
+  };
+  try {
+    const delayed = spawnProxy();
+    await stalled.promise;
+    stall.close();
+    const shutDown = spawnProxy();
+    await ownedBy(shutDown.pid);
+    shutDown.kill("SIGTERM");
+    await shutDown.exited;
+    const current = spawnProxy();
+    await ownedBy(current.pid);
+    const exit = await Promise.race([delayed.exited, Bun.sleep(4000).then(() => "still serving")]);
+    expect(exit).toBe(0);
+    expect(published().pid).toBe(current.pid);
+  } finally {
+    for (const socket of sockets) socket.destroy();
+    stall.close();
+  }
 });
 
 test("SIGTERM to agent-fold copilot stops Copilot and exits with 143", async () => {

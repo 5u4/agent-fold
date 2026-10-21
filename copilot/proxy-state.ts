@@ -128,10 +128,6 @@ export async function claimState(state: ProxyState, secret: string): Promise<Cla
   }
 }
 
-export function removeState(epoch: number): void {
-  rmSync(epochPath(epoch), { force: true });
-}
-
 function sameHex(a: string, b: string): boolean {
   const left = Buffer.from(a, "hex");
   const right = Buffer.from(b, "hex");
