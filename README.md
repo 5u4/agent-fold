@@ -39,7 +39,7 @@ copilot plugin marketplace add ..
 copilot plugin install agent-fold@agent-fold
 ```
 
-The plugin loads from the clone, so `git pull` updates both the plugin and the `agent-fold` command. A proxy that is already running keeps the old code. Stop it with `kill` on the `pid` in the highest-numbered `proxy-<n>.json` under `~/.local/state/agent-fold/copilot-proxy/`, or under `$XDG_STATE_HOME/agent-fold/copilot-proxy/` when that variable is set, and the next launch starts a new one.
+The plugin loads from the clone, so `git pull` updates both the plugin and the `agent-fold` command. A proxy that is already running keeps the old code. Stop it with `kill` on the `pid` in the highest-numbered `proxy-<n>.json` under `~/.local/state/agent-fold/copilot-proxy/`, or under `$XDG_STATE_HOME/agent-fold/copilot-proxy/` when that variable is set, and the next launch starts a new one on a new port. Killing the proxy breaks every Copilot CLI and app session started through `agent-fold`, so quit them first or relaunch them through `agent-fold` afterwards.
 
 Start Copilot CLI with `agent-fold copilot --experimental`. It takes the same arguments as `copilot`, and `--experimental` loads the plugin, which lets the agent write its notes without a permission prompt. To start the GitHub Copilot app, quit it, then run `agent-fold gh-app`. Outside macOS, set `launch.gh-app` in the config below first. The app still asks you to approve the agent's note writes, like any other file edit, unless the session auto-approves. A session started any other way is not folded, and neither is a CLI session when `copilotUrl` is set in `~/.copilot/settings.json`. With the plugin loaded, the Copilot CLI TUI shows a warning after such a session's first reply.
 
