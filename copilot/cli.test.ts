@@ -111,3 +111,18 @@ test("concurrent launches over a stale state naming a dead port agree on one fre
   expect(fresh.port).not.toBe(deadPort);
   expect(readdirSync(proxyDir()).filter(name => name.startsWith("proxy-"))).toEqual(["proxy-2.json"]);
 });
+
+test("SIGTERM to agent-fold copilot stops Copilot and exits with 143", async () => {
+  mkdirSync(join(root, "config", "agent-fold"), { recursive: true });
+  writeFileSync(
+    join(root, "config", "agent-fold", "copilot.json"),
+    JSON.stringify({ launch: { copilot: ["sh", "-c", "echo $$; exec sleep 30"] } }),
+  );
+  const launcher = Bun.spawn(["bun", CLI, "copilot"], { env, stdout: "pipe", stderr: "inherit" });
+  const { value } = await launcher.stdout.getReader().read();
+  const child = Number(new TextDecoder().decode(value));
+  started.add(child);
+  launcher.kill("SIGTERM");
+  expect(await launcher.exited).toBe(143);
+  expect(alive(child)).toBe(false);
+});

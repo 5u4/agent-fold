@@ -20,7 +20,7 @@ On each `session.idle` the extension reads the session's events with `getEvents(
 `cli.ts` is the `agent-fold` bin. Install it with `bun link` in `copilot/`. Bun runs the TypeScript from source.
 
 - `agent-fold proxy` serves `startProxy` on a random port of 127.0.0.1 and claims the proxy state. If another proxy that proves its identity and speaks `PROTOCOL` already owns the state, it stops and exits with code 0. Otherwise it serves until SIGTERM or SIGINT and then removes its state file.
-- `agent-fold copilot [args...]` runs `ensureProxy`, then `launch.copilot` plus the args with `COPILOT_API_URL=http://127.0.0.1:<port>/launch/<new uuid>`. It inherits stdio, ignores SIGINT while the child runs, and exits with the child's code.
+- `agent-fold copilot [args...]` runs `ensureProxy`, then `launch.copilot` plus the args with `COPILOT_API_URL=http://127.0.0.1:<port>/launch/<new uuid>`. It inherits stdio, ignores SIGINT while the child runs, sends a SIGTERM it receives while the child runs on to the child, and exits with the child's code, or 128 plus the signal number when a signal ended the child.
 - `agent-fold gh-app [args...]` runs `ensureProxy` and `launch.gh-app` the same way, with stdio inherited but SIGINT not ignored. When it starts the command it also starts polling the proxy for up to 15 s for a request under the launch id, because a wrapper may stay in the foreground. If none arrives in time, it says that the app may already be running or that the launch command dropped `COPILOT_API_URL`. A non-zero exit of the command returns that code at once. After a zero exit it waits for the poll and exits with 0 when the request arrived and 1 when it did not.
 - Any other subcommand prints the usage and exits with code 2.
 

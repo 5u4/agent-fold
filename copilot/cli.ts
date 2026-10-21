@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { closeSync, openSync } from "node:fs";
 import { constants } from "node:os";
@@ -53,10 +53,19 @@ async function checkInheritedApiUrl(secret: string): Promise<void> {
   throw new ExitError(`agent-fold: COPILOT_API_URL is already set to ${inherited}; set "upstream" in ${configPath} instead`, 2);
 }
 
-function exited(child: ChildProcess): Promise<number> {
+function run(command: string, args: string[], env: NodeJS.ProcessEnv): Promise<number> {
+  const child = spawn(command, args, { stdio: "inherit", env });
+  const forward = () => child.kill("SIGTERM");
+  process.on("SIGTERM", forward);
   const { promise, resolve, reject } = Promise.withResolvers<number>();
-  child.once("error", reject);
-  child.once("exit", (code, signal) => resolve(code ?? 128 + (signal === null ? 0 : constants.signals[signal])));
+  child.once("error", error => {
+    process.off("SIGTERM", forward);
+    reject(error);
+  });
+  child.once("exit", (code, signal) => {
+    process.off("SIGTERM", forward);
+    resolve(code ?? 128 + (signal === null ? 0 : constants.signals[signal]));
+  });
   return promise;
 }
 
@@ -81,9 +90,9 @@ async function launch(target: Target, config: Config, args: string[]): Promise<n
   const [command, ...commandArgs] = argv;
   if (target === "copilot") {
     process.on("SIGINT", () => {});
-    return exited(spawn(command, [...commandArgs, ...args], { stdio: "inherit", env }));
+    return run(command, [...commandArgs, ...args], env);
   }
-  const child = exited(spawn(command, [...commandArgs, ...args], { stdio: "inherit", env }));
+  const child = run(command, [...commandArgs, ...args], env);
   const seen = waitForLaunch(port, secret, launchId);
   seen.then(
     reached =>
