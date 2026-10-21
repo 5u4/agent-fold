@@ -1,407 +1,140 @@
 // extension.ts
-import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { homedir as homedir3 } from "node:os";
-import { join as join3 } from "node:path";
-import { CopilotClient, CopilotRequestHandler } from "@github/copilot-sdk";
+import { joinSession } from "@github/copilot-sdk/extension";
 
-// context/fold.md
-var fold_default = `# Folded runs
-A run starts at a user message and ends with your final reply. Once a run ends, later requests keep only that user message and your final reply. Tool calls, tool results, and intermediate text are gone from your context.
+// paths.ts
+import { homedir } from "node:os";
+import { join } from "node:path";
+var home = homedir();
+var foldHome = process.env.AGENT_FOLD_HOME || join(home, ".agent-fold");
+var configPath = join(process.env.XDG_CONFIG_HOME || join(home, ".config"), "agent-fold", "copilot.json");
+var proxyDir = join(process.env.XDG_STATE_HOME || join(home, ".local", "state"), "agent-fold", "copilot-proxy");
+var secretPath = join(proxyDir, "secret");
+var logPath = join(proxyDir, "proxy.log");
+var sessionStateDir = join(process.env.COPILOT_HOME || join(home, ".copilot"), "session-state");
 
-When a skill, mode, playbook, or todo list is in force, your final reply names the step it reached and the next step.
-
-## Session index
-\`{foldDir}/INDEX.md\` lists where earlier runs found things. Its contents as of this run's start, or \`(empty)\`, appear right after the message that starts this run, so you do not need to read it.
-
-Before your final reply, append a line to \`{foldDir}/INDEX.md\` for each location and result you found that your reply does not spell out, with its locations, the question it answers, and the answer:
-
-\`\`\`md
-- src/cache/lru.ts:30-58, src/cache/policy.ts — where is eviction decided? policy.ts sets the size cap that lru.ts enforces
-- {foldDir}/upload-timeout.md — why do uploads fail on CI? The 5s timeout trips on cold runners
-\`\`\`
-
-If the answer exists only in tool output, write it to a file in \`{foldDir}\` with Result, Evidence, and Reproduction, and point the line at that file.
-
-An INDEX line points only at repo paths or files in \`{foldDir}\`.
-`;
-
-// fold.ts
-var BOUNDARY_PREFIXES = ["<current_datetime>", "Some of the conversation history has been summarized"];
-function startsRun(text) {
-  return BOUNDARY_PREFIXES.some((prefix) => text.startsWith(prefix));
-}
-function foldRun(format, run, kinds) {
-  const last = kinds.findLastIndex((kind) => kind === "reply" || kind === "drop");
-  if (last < 1 || kinds[last] !== "reply")
-    return run;
-  return run.flatMap((item, index) => {
-    if (index === 0)
-      return [item];
-    if (kinds[index] === "drop")
-      return [];
-    const kept = format.keptInFold(item);
-    return kept === undefined ? [] : [kept];
-  });
-}
-function foldItems(format, items, kinds) {
-  const starts = kinds.flatMap((kind, index) => kind === "boundary" ? [index] : []);
-  if (starts.length < 2)
-    return items;
-  const ends = [...starts.slice(1), items.length];
-  const runs = starts.slice(0, -1).flatMap((start, k) => foldRun(format, items.slice(start, ends[k]), kinds.slice(start, ends[k])));
-  return [...items.slice(0, starts[0]), ...runs, ...items.slice(starts[starts.length - 1])];
-}
-function rewriteBody(format, body, { rules, index }) {
-  const items = format.items(body);
-  if (!items)
-    return;
-  const kinds = items.map((item) => format.classify(item));
-  const lastBoundary = kinds.lastIndexOf("boundary");
-  if (lastBoundary === -1)
-    return;
-  const folded = foldItems(format, items, kinds);
-  const at = folded.length - (items.length - lastBoundary) + 1;
-  const indexItem = format.indexItem(index(format.runKey(items[lastBoundary])));
-  return format.withRules(format.withItems(body, [...folded.slice(0, at), indexItem, ...folded.slice(at)]), rules);
-}
-
-// fold-dir.ts
-import { execFile } from "node:child_process";
-import { realpathSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-var AGENT = "copilot";
-function real(path) {
-  const resolved = resolve(path);
-  try {
-    return realpathSync(resolved);
-  } catch {
-    return resolved;
-  }
-}
-function inside(rel) {
-  return rel === "" || !rel.startsWith("..") && !isAbsolute(rel);
-}
-function projectSlug(projectRoot, home = homedir(), tmp = tmpdir()) {
-  const root = real(projectRoot);
-  const fromTmp = relative(real(tmp), root);
-  if (inside(fromTmp))
-    return fromTmp === "" ? "-tmp" : `-tmp-${fromTmp.replace(/[/\\:]/g, "-")}`;
-  const fromHome = relative(real(home), root);
-  if (inside(fromHome))
-    return `-${fromHome.replace(/[/\\:]/g, "-")}`;
-  return `--${root.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`;
-}
-function foldDir({ foldHome, projectRoot, startTime, sessionId }) {
-  const startedAt = new Date(startTime).toISOString().replace(/\D/g, "").slice(0, 14);
-  return join(foldHome, projectSlug(projectRoot), AGENT, `${startedAt}-${sessionId}`);
-}
-function withFoldDir(rules, dir) {
-  return rules.replaceAll("{foldDir}", () => dir);
-}
-function gitPath(cwd, flag) {
-  const { promise, resolve } = Promise.withResolvers();
-  execFile("git", ["rev-parse", "--path-format=absolute", flag], { cwd }, (error, stdout) => resolve(error ? undefined : stdout.trim()));
-  return promise;
-}
-async function findProjectRoot(cwd) {
-  const commonDir = await gitPath(cwd, "--git-common-dir");
-  if (!commonDir)
-    return cwd;
-  if (basename(commonDir) === ".git")
-    return dirname(commonDir);
-  return await gitPath(cwd, "--show-toplevel") ?? cwd;
-}
-
-// formats.ts
-var RESPONSES_DROP = {
-  reasoning: true,
-  function_call: true,
-  function_call_output: true,
-  custom_tool_call: true,
-  custom_tool_call_output: true
-};
-var STRIPPED_IN_FOLD = { thinking: true, redacted_thinking: true, tool_result: true };
-function parts(content) {
-  return typeof content === "string" ? [{ type: "text", text: content }] : content ?? [];
-}
-function texts(content) {
-  return parts(content).flatMap((part) => typeof part.text === "string" ? [part.text] : []);
-}
-function isBoundary(content) {
-  return texts(content).some(startsRun);
-}
-function hasText(content) {
-  return texts(content).some((text) => text.trim() !== "");
-}
-function arrayAt(body, key) {
-  const value = body[key];
-  return Array.isArray(value) ? value : undefined;
-}
-var responses = {
-  items: (body) => arrayAt(body, "input"),
-  withItems: (body, input) => ({ ...body, input }),
-  classify(item) {
-    if (item.type !== undefined && item.type !== "message")
-      return RESPONSES_DROP[item.type] === true ? "drop" : "keep";
-    if (item.role === "user")
-      return isBoundary(item.content) ? "boundary" : "steering";
-    if (item.role === "assistant")
-      return item.phase !== "commentary" && hasText(item.content) ? "reply" : "drop";
-    return "keep";
-  },
-  keptInFold: (item) => item,
-  withRules(body, rules) {
-    if (typeof body.instructions === "string")
-      return { ...body, instructions: `${body.instructions}
-
-${rules}` };
-    const input = arrayAt(body, "input") ?? [];
-    const [first, ...rest] = input;
-    if (first?.role !== "system")
-      return { ...body, instructions: rules };
-    const content = typeof first.content === "string" ? `${first.content}
-
-${rules}` : [...first.content ?? [], { type: "input_text", text: rules }];
-    return { ...body, input: [{ ...first, content }, ...rest] };
-  },
-  indexItem: (text) => ({ type: "message", role: "user", content: [{ type: "input_text", text }] }),
-  runKey: (item) => texts(item.content).join(`
-`)
-};
-var messages = {
-  items: (body) => arrayAt(body, "messages"),
-  withItems: (body, messages) => ({ ...body, messages }),
-  classify(message) {
-    const blocks = parts(message.content);
-    if (message.role === "user") {
-      const toolResults = blocks.filter((block) => block.type === "tool_result").length;
-      if (toolResults === 0)
-        return isBoundary(message.content) ? "boundary" : "steering";
-      return toolResults === blocks.length ? "drop" : "steering";
-    }
-    if (message.role === "assistant") {
-      return blocks.some((block) => block.type === "tool_use") || !hasText(message.content) ? "drop" : "reply";
-    }
-    return "keep";
-  },
-  keptInFold(message) {
-    if (typeof message.content === "string")
-      return message;
-    const content = message.content.filter((block) => STRIPPED_IN_FOLD[block.type] !== true);
-    return content.length === 0 ? undefined : { ...message, content };
-  },
-  withRules(body, rules) {
-    const system = body.system;
-    if (typeof system === "string")
-      return { ...body, system: `${system}
-
-${rules}` };
-    return { ...body, system: [...Array.isArray(system) ? system : [], { type: "text", text: rules }] };
-  },
-  indexItem: (text) => ({ role: "user", content: [{ type: "text", text }] }),
-  runKey: (message) => texts(message.content).join(`
-`)
-};
-var formats = { "/responses": responses, "/v1/messages": messages };
-
-// session-index.ts
-var INDEX_MAX_LINES = 300;
-var INDEX_MAX_BYTES = 153600;
-function capIndex(text) {
-  const lines = text.split(`
-`);
-  if (lines.at(-1) === "")
-    lines.pop();
-  if (lines.length <= INDEX_MAX_LINES && Buffer.byteLength(text) <= INDEX_MAX_BYTES)
-    return text;
-  let kept = 0;
-  let bytes = 0;
-  while (kept < INDEX_MAX_LINES) {
-    const next = bytes + Buffer.byteLength(lines[kept]) + 1;
-    if (next > INDEX_MAX_BYTES)
-      break;
-    bytes = next;
-    kept++;
-  }
-  return `${lines.slice(0, kept).map((line) => `${line}
-`).join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
-}
-function indexMessage(dir, text) {
-  return `Session index \`${dir}/INDEX.md\` at the start of this run:
-
-${text.trim() === "" ? "(empty)" : capIndex(text)}
-
-Before your final reply, append each location and result your reply does not spell out, as the Session index rules say.`;
-}
-
-// session-root.ts
-import { closeSync, openSync, readdirSync, readSync } from "node:fs";
-import { homedir as homedir2 } from "node:os";
+// proxy-state.ts
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { chmodSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join as join2 } from "node:path";
-var sessionStateDir = join2(process.env.COPILOT_HOME || join2(homedir2(), ".copilot"), "session-state");
-var CHUNK_BYTES = 4096;
-function readFirstLine(path) {
-  const fd = openSync(path, "r");
+var STATUS_PATH = "/_agent-fold/status";
+var EPOCH_FILE = /^proxy-(\d+)\.json$/;
+function readSecret() {
   try {
-    const chunks = [];
-    for (;; ) {
-      const chunk = Buffer.alloc(CHUNK_BYTES);
-      const read = readSync(fd, chunk, 0, CHUNK_BYTES, null);
-      const newline = chunk.subarray(0, read).indexOf(10);
-      chunks.push(chunk.subarray(0, newline === -1 ? read : newline));
-      if (newline !== -1 || read === 0)
-        return Buffer.concat(chunks).toString("utf8");
-    }
-  } finally {
-    closeSync(fd);
-  }
-}
-function readSessionStart(sessionDir) {
-  try {
-    const event = JSON.parse(readFirstLine(join2(sessionDir, "events.jsonl")));
-    const { sessionId, startTime } = event?.data ?? {};
-    if (event.type !== "session.start" || typeof event.id !== "string")
-      return;
-    if (typeof sessionId !== "string" || typeof startTime !== "string" || Number.isNaN(Date.parse(startTime)))
-      return;
-    return { sessionId, startTime, rootEventId: event.id };
+    return readFileSync(secretPath, "utf8").trim() || undefined;
   } catch {
     return;
   }
 }
-function conversationRoot(stateDir, sessionId) {
-  const own = readSessionStart(join2(stateDir, sessionId));
-  if (own === undefined)
-    return;
-  let root = own;
-  for (const id of readdirSync(stateDir)) {
-    if (id === sessionId)
-      continue;
-    const start = readSessionStart(join2(stateDir, id));
-    if (start?.rootEventId !== own.rootEventId)
-      continue;
-    const delta = Date.parse(start.startTime) - Date.parse(root.startTime);
-    if (delta < 0 || delta === 0 && start.sessionId < root.sessionId)
-      root = start;
+function proof(secret, nonce, port, status) {
+  const signed = JSON.stringify([nonce, port, status.protocol, status.launchSeen, status.sessionSeen]);
+  return createHmac("sha256", secret).update(signed).digest("hex");
+}
+function isCount(value) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+function epochPath(epoch) {
+  return join2(proxyDir, `proxy-${epoch}.json`);
+}
+function epochs() {
+  try {
+    return readdirSync(proxyDir).flatMap((name) => {
+      const match = EPOCH_FILE.exec(name);
+      return match === null ? [] : [Number(match[1])];
+    }).sort((a, b) => b - a);
+  } catch {
+    return [];
   }
-  return { sessionId: root.sessionId, startTime: root.startTime };
+}
+function readEpoch(epoch) {
+  try {
+    const { protocol, pid, port } = JSON.parse(readFileSync(epochPath(epoch), "utf8"));
+    return isCount(protocol) && isCount(pid) && isCount(port) ? { protocol, pid, port } : undefined;
+  } catch {
+    return;
+  }
+}
+function readState() {
+  const [latest] = epochs();
+  return latest === undefined ? undefined : readEpoch(latest);
+}
+function sameHex(a, b) {
+  const left = Buffer.from(a, "hex");
+  const right = Buffer.from(b, "hex");
+  return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
+}
+async function queryProxy(port, secret, query, timeoutMs = 1000) {
+  const nonce = randomBytes(16).toString("hex");
+  const url = new URL(`http://127.0.0.1:${port}${STATUS_PATH}`);
+  url.searchParams.set("nonce", nonce);
+  if (query.launch !== undefined)
+    url.searchParams.set("launch", query.launch);
+  if (query.session !== undefined) {
+    url.searchParams.set("session", query.session.id);
+    url.searchParams.set("since", String(query.session.since));
+  }
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!response.ok)
+      return;
+    const { proof: received, protocol, launchSeen, sessionSeen } = await response.json();
+    if (typeof received !== "string" || typeof protocol !== "number" || typeof launchSeen !== "boolean" || typeof sessionSeen !== "boolean")
+      return;
+    const status = { protocol, launchSeen, sessionSeen };
+    return sameHex(received, proof(secret, nonce, port, status)) ? status : undefined;
+  } catch {
+    return;
+  }
+}
+
+// turn-start.ts
+function turnStart(events) {
+  for (const event of events.toReversed()) {
+    if (event.type === "session.start" || event.type === "session.resume")
+      return;
+    if (event.type === "user.message" && !event.agentId)
+      return Date.parse(event.timestamp);
+  }
+  return;
 }
 
 // extension.ts
-var SETUP_WAIT_MS = 5000;
-var LEFT_LAUNCH_JOIN_DELAY_MS = 1000;
-var foldHome = process.env.AGENT_FOLD_HOME || join3(homedir3(), ".agent-fold");
-function readIndex(dir) {
-  try {
-    return readFileSync(join3(dir, "INDEX.md"), "utf8");
-  } catch {
-    return "";
-  }
-}
-async function injectionFor(session, sessionId) {
-  const snapshot = await session.rpc.metadata.snapshot();
-  const { startTime, sessionId: rootId } = conversationRoot(sessionStateDir, sessionId) ?? { startTime: snapshot.startTime, sessionId };
-  const projectRoot = await findProjectRoot(snapshot.workingDirectory);
-  const dir = foldDir({ foldHome, projectRoot, startTime, sessionId: rootId });
-  await mkdir(dir, { recursive: true });
-  let run;
-  return {
-    rules: withFoldDir(fold_default, dir),
-    index: (key) => {
-      if (run?.key !== key)
-        run = { key, text: indexMessage(dir, readIndex(dir)) };
-      return run.text;
-    }
-  };
-}
-function settledWithin(promise, ms) {
-  const { promise: timeout, resolve } = Promise.withResolvers();
-  const timer = setTimeout(resolve, ms);
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-class FoldHandler extends CopilotRequestHandler {
-  sessions = new Map;
-  async sendRequest(request, ctx) {
-    let forwarded = request;
-    try {
-      forwarded = await this.folded(request, ctx) ?? request;
-    } catch {}
-    return super.sendRequest(forwarded, ctx);
-  }
-  async folded(request, ctx) {
-    const format = formats[new URL(ctx.url).pathname];
-    if (format === undefined || ctx.interactionType !== "conversation-agent")
-      return;
-    if ((request.headers.get("content-encoding") ?? "identity") !== "identity")
-      return;
-    const setup = ctx.sessionId === undefined ? undefined : this.sessions.get(ctx.sessionId);
-    if (setup === undefined)
-      return;
-    const injection = await settledWithin(setup, SETUP_WAIT_MS);
-    if (injection === undefined)
-      return;
-    const body = rewriteBody(format, await request.clone().json(), injection);
-    if (body === undefined)
-      return;
-    const headers = new Headers(request.headers);
-    headers.delete("content-length");
-    return new Request(request.url, { method: request.method, headers, body: JSON.stringify(body), signal: request.signal });
-  }
-}
-var launchSessionId = process.env.SESSION_ID;
-if (!launchSessionId)
-  process.exit(0);
-var handler = new FoldHandler;
-var client = new CopilotClient({ _internalConnection: { kind: "parent-process" }, requestHandler: handler });
-try {
-  await mkdir(foldHome, { recursive: true });
-  await client.start();
-} catch (error) {
-  console.error(`agent-fold: this extension process does not fold: ${error instanceof Error ? error.message : error}`);
-  process.exit(0);
-}
-function keepFoldHomeGranted(session, sessionId) {
+var BYPASS_WARNING = "This session's model requests do not go through the agent-fold proxy, so its runs are not folded; start Copilot with `agent-fold copilot` or the app with `agent-fold gh-app`.";
+function keepFoldHomeGranted(session) {
   const { paths } = session.rpc.permissions;
-  const grant = () => paths.isPathWithinAllowedDirectories({ path: foldHome }).then(({ allowed }) => allowed || paths.add({ path: foldHome })).catch((error) => console.error(`agent-fold: could not grant ${foldHome} to session ${sessionId}: ${error}`));
+  const grant = () => paths.isPathWithinAllowedDirectories({ path: foldHome }).then(({ allowed }) => allowed || paths.add({ path: foldHome })).catch((error) => console.error(`agent-fold: could not grant ${foldHome} to session ${session.sessionId}: ${error}`));
   session.on("session.custom_agents_updated", grant);
   session.on("session.skills_loaded", grant);
 }
-var joins = [];
-var stopping = false;
-function foldSession(sessionId) {
-  if (stopping || handler.sessions.has(sessionId))
-    return;
-  const join = client.resumeSessionForExtension(sessionId, { additionalDirectories: [foldHome], suppressResumeEvent: true }, {}, undefined);
-  joins.push(join);
-  handler.sessions.set(sessionId, join.then((session) => {
-    keepFoldHomeGranted(session, sessionId);
-    return injectionFor(session, sessionId);
-  }).catch((error) => {
-    console.error(`agent-fold: not folding session ${sessionId}, requests pass through: ${error}`);
-    return;
-  }));
+async function routedThroughProxy(sessionId, since) {
+  const state = readState();
+  const secret = readSecret();
+  if (state === undefined || secret === undefined)
+    return false;
+  return (await queryProxy(state.port, secret, { session: { id: sessionId, since } }))?.sessionSeen === true;
 }
-var connection = client.connection;
-if (connection === null) {
-  console.error("agent-fold: Copilot client has no connection after start, requests pass through");
-} else {
-  const send = connection.sendRequest.bind(connection);
-  connection.sendRequest = (method, params, ...rest) => send(method, method === "session.resume" ? { ...params, requestPermission: false } : params, ...rest);
-  foldSession(launchSessionId);
-  let foreground = launchSessionId;
-  client.onLifecycle("session.foreground", ({ sessionId }) => {
-    const leftLaunchSession = foreground === launchSessionId;
-    foreground = sessionId;
-    if (leftLaunchSession)
-      setTimeout(foldSession, LEFT_LAUNCH_JOIN_DELAY_MS, sessionId);
-    else
-      foldSession(sessionId);
+function warnOnBypass(session) {
+  const stop = session.on("session.idle", () => {
+    session.getEvents().then(async (events) => {
+      const since = turnStart(events);
+      if (since === undefined)
+        return;
+      stop();
+      if (!await routedThroughProxy(session.sessionId, since))
+        await session.log(BYPASS_WARNING, { level: "warning", ephemeral: true });
+    }).catch((error) => {
+      stop();
+      console.error(`agent-fold: could not check the proxy for session ${session.sessionId}: ${error}`);
+    });
   });
-  process.once("SIGTERM", () => {
-    stopping = true;
-    Promise.allSettled(joins.map((join) => join.then((session) => session.disconnect()))).then(() => process.exit(0));
-  });
+}
+if (!process.env.SESSION_ID)
+  process.exit(0);
+try {
+  await mkdir(foldHome, { recursive: true });
+  const session = await joinSession({ additionalDirectories: [foldHome] });
+  keepFoldHomeGranted(session);
+  warnOnBypass(session);
+} catch (error) {
+  console.error(`agent-fold: could not join the session: ${error instanceof Error ? error.message : error}`);
 }

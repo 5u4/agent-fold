@@ -5,6 +5,9 @@
   "type": "module",
   "license": "MIT",
   "author": "Sen Hung Wong",
+  "bin": {
+    "agent-fold": "./cli.ts"
+  },
   "scripts": {
     "build": "bun build.ts",
     "typecheck": "tsc --noEmit",
