@@ -5,9 +5,11 @@ import { mentions, resultText } from "../transcript";
 
 const MEASURE_SCRIPT = `#!/bin/bash
 set -euo pipefail
-counter="$(dirname "$0")/.measure-count"
-k=$(( $(cat "$counter" 2>/dev/null || echo 0) + 1 ))
-echo "$k" > "$counter"
+dir="$(dirname "$0")"
+until mkdir "$dir/.measure-lock" 2>/dev/null; do sleep 0.05; done
+k=$(( $(cat "$dir/.measure-count" 2>/dev/null || echo 0) + 1 ))
+echo "$k" > "$dir/.measure-count"
+rmdir "$dir/.measure-lock"
 echo "run $k: M-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \\n')"
 `;
 
