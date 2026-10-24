@@ -14,12 +14,11 @@ function providerError(turn: Turn): string | undefined {
   )[0];
 }
 
-function finalReplyCarriedProviderState(turn: Turn): number {
-  const reply = turn.messages.findLast(message => message.role === "assistant");
-  if (reply?.role !== "assistant") return 0;
-  const state =
-    reply.providerPayload !== undefined || reply.content.some(block => block.type === "thinking" || block.type === "redactedThinking");
-  return state ? 1 : 0;
+function carriesProviderState(message: Turn["messages"][number] | undefined): boolean {
+  return (
+    message?.role === "assistant" &&
+    (message.providerPayload !== undefined || message.content.some(block => block.type === "thinking" || block.type === "redactedThinking"))
+  );
 }
 
 function grade(run: Run, { nonce }: { nonce: string }): Verdict {
@@ -28,6 +27,12 @@ function grade(run: Run, { nonce }: { nonce: string }): Verdict {
   if (firstError !== undefined) return { status: "invalid", evidence: `turn 1 ended in a provider error: ${firstError}` };
   if (!first.requests.some(request => JSON.stringify(request).includes(nonce)))
     return { status: "invalid", evidence: "turn 1 never sent the nonce to the model" };
+  if (!first.messages.some(carriesProviderState))
+    return {
+      status: "invalid",
+      evidence:
+        "no assistant message in turn 1 carried thinking, redactedThinking, or providerPayload, so folding stripped no provider state",
+    };
   if (requestWithoutIndex(second.requests[0]).includes(nonce))
     return { status: "invalid", evidence: "plugin did not fold the nonce out of turn 2's first request" };
   const secondError = providerError(second);
@@ -62,7 +67,12 @@ describe(title, () => {
         variant: "with-plugin",
         trial: 1,
         verdict,
-        metrics: { "turn-1 reply provider state": finalReplyCarriedProviderState(run.turns[0]) },
+        metrics: {
+          "turn-1 provider state": run.turns[0].messages.some(carriesProviderState) ? 1 : 0,
+          "turn-1 reply provider state": carriesProviderState(run.turns[0].messages.findLast(message => message.role === "assistant"))
+            ? 1
+            : 0,
+        },
       });
       expect(verdict).toMatchObject({ status: "pass" });
     }, 300_000);
