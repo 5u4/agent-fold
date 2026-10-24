@@ -1,4 +1,4 @@
 node_modules/
 .DS_Store
-omp/evals/results/
+/*/evals/results/
 .env.test.local

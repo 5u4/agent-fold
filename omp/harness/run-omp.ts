@@ -1,4 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-entries";
@@ -67,7 +77,7 @@ export async function runTrial<S>(
   scenario: Pick<Scenario<S>, "setup" | "turns" | "inspect">,
   opts: { variant: Variant; model: string; settings?: Record<string, unknown>; pluginSettings?: Record<string, unknown> },
 ): Promise<{ run: Run; state: S }> {
-  const root = mkdtempSync(join(tmpdir(), "omp-run-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "omp-run-")));
   const profile = createProfile(opts.settings, opts.pluginSettings);
   try {
     const workdir = join(root, "workdir");

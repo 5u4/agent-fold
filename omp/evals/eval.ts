@@ -1,6 +1,5 @@
-import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Variant, Verdict } from "../harness/types";
+import { resultsFile, type Variant } from "@agent-fold/evals";
 
 export type EvalConfig = { model: string; trials: Record<Variant, number> };
 
@@ -22,31 +21,4 @@ export function providerModels(env = process.env): string[] {
   return models;
 }
 
-type TrialResult = { variant: Variant; trial: number; verdict: Verdict; metrics: Record<string, number> };
-
-const resultsFile = join(import.meta.dir, "results", `${new Date().toISOString().replaceAll(":", "-")}.jsonl`);
-
-export function createReport(title: string, model: string) {
-  const results: TrialResult[] = [];
-  return {
-    record(result: TrialResult) {
-      results.push(result);
-      mkdirSync(join(resultsFile, ".."), { recursive: true });
-      appendFileSync(resultsFile, `${JSON.stringify({ scenario: title, model, ...result })}\n`);
-    },
-    summary(): string[] {
-      const variants = [...new Set(results.map(result => result.variant))];
-      const lines = variants.map(variant => {
-        const all = results.filter(result => result.variant === variant);
-        const valid = all.filter(result => result.verdict.status !== "invalid");
-        const passed = valid.filter(result => result.verdict.status === "pass").length;
-        const metrics = Object.keys(all[0]?.metrics ?? {}).map(name => {
-          const mean = valid.length ? (valid.reduce((sum, result) => sum + result.metrics[name], 0) / valid.length).toFixed(2) : "n/a";
-          return `mean ${name} ${mean}`;
-        });
-        return [`${title} / ${variant}: pass ${passed}/${valid.length}`, `invalid ${all.length - valid.length}`, ...metrics].join(", ");
-      });
-      return [`model ${model}, means over valid trials`, ...lines, `results: ${resultsFile}`];
-    },
-  };
-}
+export const RESULTS_FILE = resultsFile(join(import.meta.dir, "results"));

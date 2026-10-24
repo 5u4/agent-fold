@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { basename, dirname, join } from "node:path";
+import { FOLD_DIR } from "@agent-fold/evals";
 import { runTrial } from "../harness/run-omp";
-import { FOLD_DIR, type ScriptedRequest, type Turn } from "../harness/types";
+import type { ScriptedRequest, Turn } from "../harness/types";
 
 function toolResultText(turn: Turn): string {
   return turn.messages

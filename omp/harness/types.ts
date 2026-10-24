@@ -4,7 +4,7 @@ import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-ent
 
 export type Variant = "without-plugin" | "with-plugin";
 
-export type Reply = ({ text: string } | { toolCall: { name: string; arguments: Record<string, unknown> } }) & {
+export type Reply = ({ text: string } | { toolCall: { name: string; arguments: Record<string, unknown> }; newFile?: true }) & {
   inputTokens?: number;
 };
 
@@ -21,8 +21,6 @@ export type Turn = {
 export type Run = { variant: Variant; foldHome: string; turns: Turn[] };
 
 export type Verdict = { status: "pass" | "fail" | "invalid"; evidence: string };
-
-export const FOLD_DIR = "<fold-dir>";
 
 export type ScriptedTurn = { commands?: string[]; prompt: string; rpc?: true; script: Reply[] };
 
