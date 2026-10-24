@@ -26,7 +26,7 @@ export const recoversArtifactResult: Scenario<void> = {
   },
   turns: [
     "Run ./measure.sh three times, as three separate commands. Each run is expensive and prints a value that can never be reproduced: running it again gives a different value. Reply with only how many runs succeeded.",
-    "What value did the second run of ./measure.sh print?",
+    "What value did the ./measure.sh run labeled `run 2` print?",
   ],
   grade(run) {
     const [first, second] = run.turns;
