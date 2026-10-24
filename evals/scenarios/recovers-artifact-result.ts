@@ -5,9 +5,11 @@ import { mentions, resultText } from "../transcript";
 
 const MEASURE_SCRIPT = `#!/bin/bash
 set -euo pipefail
-counter="$(dirname "$0")/.measure-count"
-k=$(( $(cat "$counter" 2>/dev/null || echo 0) + 1 ))
-echo "$k" > "$counter"
+dir="$(dirname "$0")"
+until mkdir "$dir/.measure-lock" 2>/dev/null; do sleep 0.05; done
+k=$(( $(cat "$dir/.measure-count" 2>/dev/null || echo 0) + 1 ))
+echo "$k" > "$dir/.measure-count"
+rmdir "$dir/.measure-lock"
 echo "run $k: M-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \\n')"
 `;
 
@@ -24,7 +26,7 @@ export const recoversArtifactResult: Scenario<void> = {
   },
   turns: [
     "Run ./measure.sh three times, as three separate commands. Each run is expensive and prints a value that can never be reproduced: running it again gives a different value. Reply with only how many runs succeeded.",
-    "What value did the second run of ./measure.sh print?",
+    "What value did the ./measure.sh run labeled `run 2` print?",
   ],
   grade(run) {
     const [first, second] = run.turns;

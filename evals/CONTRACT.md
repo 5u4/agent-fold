@@ -56,7 +56,7 @@ Throw when the agent itself fails, such as a crash or a provider error. The runn
 - `Turn.actions` has one `Action` per tool call the model made in the turn, in call order. Scripted calls count too.
 - `Turn.modelInputs[i]` serializes the i-th model request of the turn. It contains every text the model received: system prompt, user messages, assistant messages, tool calls, and tool results. Strip the plugin's injected `INDEX.md` snapshot from it. Stripping is the adapter's job, because only the adapter knows how its plugin injects the snapshot.
 - `Action.name` is the tool name exactly as the model sent it.
-- `Action.args` is the raw tool arguments exactly as the model sent them. Do not rename keys or normalize paths.
+- `Action.args` is the raw tool arguments exactly as the model sent them. Do not rename keys or normalize paths. A harness whose tool takes one free-text argument instead of an object stores that text as `{ input: <text> }`. Grades and metrics search raw `args` only for path substrings, so they still work on it. Fail evidence that quotes `args.path`, `args.pattern`, or `args.command` shows nothing for such a call.
 - `Action.result` is the tool result text. Join text blocks with `"\n"` and map non-text blocks to `""`. Use `null` when the harness recorded no result for the call. A tool result whose call is not in the same turn cannot be represented, so throw instead of dropping it.
 - `Action.isError` is true when the result was an error. It is false when there is no result.
 - `Action.touchesSessionLog` is true when the call touches the agent's own raw session transcript files. omp sets it when any argument mentions `.jsonl`, because omp stores sessions as `.jsonl` files. Use whatever marks your agent's transcript files.

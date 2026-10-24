@@ -7,7 +7,12 @@ export type ConversationRoot = { sessionId: string; startTime: string; cwd: stri
 
 const CHUNK_BYTES = 4096;
 
-function readFirstLine(path: string): string {
+// Copilot CLI 1.0.101 writes events.jsonl of a new session about when it sends the session's first model request.
+export const SESSION_START_WAIT_MS = 2000;
+
+const SESSION_START_POLL_MS = 50;
+
+export function readFirstLine(path: string): string {
   const fd = openSync(path, "r");
   try {
     const chunks: Buffer[] = [];
@@ -47,4 +52,14 @@ export function conversationRoot(stateDir: string, sessionId: string): Conversat
     if (delta < 0 || (delta === 0 && start.sessionId < root.sessionId)) root = start;
   }
   return { sessionId: root.sessionId, startTime: root.startTime, cwd: own.cwd };
+}
+
+export async function awaitConversationRoot(stateDir: string, sessionId: string, waitMs: number): Promise<ConversationRoot> {
+  const deadline = Date.now() + waitMs;
+  for (;;) {
+    const root = conversationRoot(stateDir, sessionId);
+    if (root !== undefined) return root;
+    if (Date.now() >= deadline) throw new Error(`no session.start for session ${sessionId}`);
+    await Bun.sleep(SESSION_START_POLL_MS);
+  }
 }

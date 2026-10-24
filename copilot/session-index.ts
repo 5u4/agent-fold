@@ -20,6 +20,10 @@ export function capIndex(text: string): string {
     .join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
 }
 
+export function indexHeading(dir: string): string {
+  return `Session index \`${dir}/INDEX.md\` at the start of this run:`;
+}
+
 export function indexMessage(dir: string, text: string): string {
-  return `Session index \`${dir}/INDEX.md\` at the start of this run:\n\n${text.trim() === "" ? "(empty)" : capIndex(text)}\n\nBefore your final reply, append each location and result your reply does not spell out, as the Session index rules say.`;
+  return `${indexHeading(dir)}\n\n${text.trim() === "" ? "(empty)" : capIndex(text)}\n\nBefore your final reply, append each location and result your reply does not spell out, as the Session index rules say.`;
 }
