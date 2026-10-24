@@ -28,7 +28,7 @@
     "test": "bun test",
     "eval": "bun test ./evals/behavior/*.eval.ts",
     "eval:providers": "bun test ./evals/providers/*.eval.ts",
-    "measure": "bun evals/session-length/measure.ts"
+    "measure": "bun scripts/measure.ts"
   },
   "devDependencies": {
     "@oh-my-pi/pi-agent-core": "18.8.7",

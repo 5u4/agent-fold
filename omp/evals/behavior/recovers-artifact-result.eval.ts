@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createReport, evalConfig } from "../harness/eval";
-import { runTrial } from "../harness/run-omp";
-import type { Run, Scenario, Turn, Verdict } from "../harness/types";
-import { requestWithoutIndex } from "../harness/view";
+import { runTrial } from "../../harness/run-omp";
+import type { Run, Scenario, Turn, Verdict } from "../../harness/types";
+import { requestWithoutIndex } from "../../harness/view";
+import { createReport, evalConfig } from "../eval";
 
 const MEASURE_SCRIPT = `#!/bin/bash
 set -euo pipefail

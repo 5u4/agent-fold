@@ -5,7 +5,7 @@ import { isUserAuthoredMessage } from "@oh-my-pi/pi-coding-agent/session/message
 import { buildSessionContext } from "@oh-my-pi/pi-coding-agent/session/session-context";
 import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-entries";
 import { parseSessionEntries } from "@oh-my-pi/pi-coding-agent/session/session-loader";
-import { foldSettled, runStarts } from "../../fold";
+import { foldSettled, runStarts } from "../fold";
 
 export type Run = {
   firstPrompt: number;

@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Verdict, Variant } from "./types";
+import type { Variant, Verdict } from "../harness/types";
 
 export type EvalConfig = { model: string; trials: Record<Variant, number> };
 
@@ -24,7 +24,7 @@ export function providerModels(env = process.env): string[] {
 
 type TrialResult = { variant: Variant; trial: number; verdict: Verdict; metrics: Record<string, number> };
 
-const resultsFile = join(import.meta.dir, "..", "results", `${new Date().toISOString().replaceAll(":", "-")}.jsonl`);
+const resultsFile = join(import.meta.dir, "results", `${new Date().toISOString().replaceAll(":", "-")}.jsonl`);
 
 export function createReport(title: string, model: string) {
   const results: TrialResult[] = [];

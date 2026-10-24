@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@oh-my-pi/pi-agent-core";
-import { foldView } from "../../fold";
-import { analyzeSession, calibrate, classify, countTokens, runsBeforeCompaction, simulate } from "./session-length";
+import { foldView } from "../fold";
+import { analyzeSession, calibrate, classify, countTokens, runsBeforeCompaction, simulate } from "../scripts/session-length";
 
 const OVERHEAD = 30_000;
 const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0 };

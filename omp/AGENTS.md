@@ -20,7 +20,7 @@ The session index and evidence files live in `~/.agent-fold/<project-slug>/omp/<
 
 ## Verify
 - Run `bun run typecheck` and `bun test`.
-- `bun test` includes the mechanism tests in `evals/mechanism` that check the request reaching the provider. They run the `omp` on your PATH.
+- `bun test` includes the mechanism tests in `tests/` that check the request reaching the provider. They run the `omp` on your PATH through the driver in `harness/`, which `evals/` shares.
 - For changes to `context/*.md` or fold behavior, run `bun run eval` and put its summary lines in the pull request. It runs every `evals/behavior/*.eval.ts` against the model in `FOLD_EVAL_MODEL`; copy `.env.test.example` to `.env.test.local` to set it. Each run also executes one without-plugin control trial per eval. A red control means the eval or model no longer separates, not that the plugin broke.
 - For changes to fold behavior and omp upgrades, also run `bun run eval:providers` with `FOLD_EVAL_PROVIDER_MODELS` set to one model per provider API. It fails when a provider rejects the folded request.
 - Smoke every behavior change in an isolated profile:

@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type AssistantMessage, createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import { FOLD_DIR, type Reply, type ScriptedRequest } from "../harness/types";
+import { FOLD_DIR, type Reply, type ScriptedRequest } from "./types";
 
 const zeroCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
