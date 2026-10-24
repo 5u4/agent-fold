@@ -21,13 +21,21 @@ function readSessionEntries(sessionsDir: string): SessionEntry[] {
     .map(line => JSON.parse(line));
 }
 
-function createProfile(settings: Record<string, unknown> | undefined): { name: string; dir: string } {
+function createProfile(
+  settings: Record<string, unknown> | undefined,
+  pluginSettings: Record<string, unknown> | undefined,
+): { name: string; dir: string } {
   const name = `omp-run-${crypto.randomUUID().slice(0, 8)}`;
   const dir = join(homedir(), ".omp", "profiles", name);
   mkdirSync(join(dir, "agent"), { recursive: true });
   const agentDb = join(homedir(), ".omp", "agent", "agent.db");
   if (existsSync(agentDb)) copyFileSync(agentDb, join(dir, "agent", "agent.db"));
   if (settings) writeFileSync(join(dir, "agent", "config.yml"), JSON.stringify(settings));
+  if (pluginSettings) {
+    mkdirSync(join(dir, "plugins"));
+    const lock = { settings: { "@agent-fold/omp": pluginSettings } };
+    writeFileSync(join(dir, "plugins", "omp-plugins.lock.json"), JSON.stringify(lock));
+  }
   return { name, dir };
 }
 
@@ -58,10 +66,10 @@ async function runRpc(args: string[], prompt: string, cwd: string, env: Record<s
 
 export async function runTrial<S>(
   scenario: Pick<Scenario<S>, "setup" | "turns" | "inspect">,
-  opts: { variant: Variant; model: string; settings?: Record<string, unknown> },
+  opts: { variant: Variant; model: string; settings?: Record<string, unknown>; pluginSettings?: Record<string, unknown> },
 ): Promise<{ run: Run; state: S }> {
   const root = mkdtempSync(join(tmpdir(), "omp-run-"));
-  const profile = createProfile(opts.settings);
+  const profile = createProfile(opts.settings, opts.pluginSettings);
   try {
     const workdir = join(root, "workdir");
     const sessions = join(root, "sessions");

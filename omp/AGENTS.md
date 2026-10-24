@@ -3,7 +3,7 @@
 Run every command here from `omp/`.
 
 ## Settings
-The plugin reads only `autolearn.enabled` and `secrets.enabled`. It hides `checkpoint` and `rewind` with `setActiveTools`, never through settings.
+The plugin reads OMP's `autolearn.enabled` and `secrets.enabled` settings and its own boolean plugin setting `skillCaptureRules`, which is off by default. It injects the managed-skill rules only when `skillCaptureRules` is true, autolearn is on, and the `manage_skill` tool exists. Turn it on with `omp plugin config set @agent-fold/omp skillCaptureRules true`. It hides `checkpoint` and `rewind` with `setActiveTools`, never through settings.
 
 ## Session switch
 `/agent-fold off` and `/agent-fold on` append an `agent-fold.switch` custom entry with `{ enabled }` to the session branch. `foldEnabled` in `switch.ts` reads the branch, and the last entry wins. With the switch off, every hook acts as if the plugin were not installed and restores the `checkpoint` and `rewind` tools it hid.

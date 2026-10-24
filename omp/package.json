@@ -14,7 +14,14 @@
   "omp": {
     "extensions": [
       "./index.ts"
-    ]
+    ],
+    "settings": {
+      "skillCaptureRules": {
+        "type": "boolean",
+        "default": false,
+        "description": "Inject agent-fold's managed-skill capture rules into the system prompt when OMP autolearn is on."
+      }
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
