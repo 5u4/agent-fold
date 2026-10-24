@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createReport, evalConfig } from "../harness/eval";
-import { runTrial } from "../harness/run-omp";
-import type { Run, Scenario, Turn, Verdict } from "../harness/types";
-import { requestWithoutIndex } from "../harness/view";
+import { runTrial } from "../../harness/run-omp";
+import type { Run, Scenario, Turn, Verdict } from "../../harness/types";
+import { requestWithoutIndex } from "../../harness/view";
+import { createReport, evalConfig } from "../eval";
 
 function toolCallCount(turn: Turn): number {
   return turn.messages.flatMap(message => (message.role === "assistant" ? message.content : [])).filter(block => block.type === "toolCall")

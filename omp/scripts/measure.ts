@@ -85,7 +85,7 @@ if (foldedPool.length > 0) console.log(`in-flight growth per run — folded sess
 console.log(`starting prompt per session: median ${k(quantile(startPrompts, 0.5))}`);
 
 const foldRulesTokens = countTokens([
-  { role: "user", content: readFileSync(join(import.meta.dir, "..", "..", "context", "fold.md"), "utf8"), timestamp: 0 },
+  { role: "user", content: readFileSync(join(import.meta.dir, "..", "context", "fold.md"), "utf8"), timestamp: 0 },
 ]);
 for (const window of WINDOWS) {
   const threshold = resolveThresholdTokens(window, DEFAULT_COMPACTION_SETTINGS);

@@ -1,5 +1,5 @@
 import type { Message } from "@oh-my-pi/pi-ai";
-import { INDEX_HEADER } from "../../session-index";
+import { INDEX_HEADER } from "../session-index";
 
 export function compactMessage(message: Message): string[] {
   switch (message.role) {

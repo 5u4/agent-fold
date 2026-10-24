@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createReport, evalConfig } from "../harness/eval";
-import { runTrial } from "../harness/run-omp";
-import { FOLD_DIR, type Reply, type Run, type Scenario, type Turn, type Verdict } from "../harness/types";
+import { runTrial } from "../../harness/run-omp";
+import { FOLD_DIR, type Reply, type Run, type Scenario, type Turn, type Verdict } from "../../harness/types";
+import { createReport, evalConfig } from "../eval";
 
 const CONFIG_SCRIPT = `#!/bin/bash
 set -euo pipefail

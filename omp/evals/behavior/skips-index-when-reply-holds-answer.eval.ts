@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createReport, evalConfig } from "../harness/eval";
-import { runTrial } from "../harness/run-omp";
-import type { Run, Scenario, Turn, Verdict } from "../harness/types";
+import { runTrial } from "../../harness/run-omp";
+import type { Run, Scenario, Turn, Verdict } from "../../harness/types";
+import { createReport, evalConfig } from "../eval";
 
 type ToolCall = { name: string; arguments: Record<string, unknown> };
 

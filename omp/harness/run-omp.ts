@@ -4,8 +4,7 @@ import { join } from "node:path";
 import type { SessionEntry } from "@oh-my-pi/pi-coding-agent/session/session-entries";
 import type { Run, Scenario, Turn, Variant } from "./types";
 
-const REPO = join(import.meta.dir, "..", "..");
-const FIXTURES = join(import.meta.dir, "..", "fixtures");
+const REPO = join(import.meta.dir, "..");
 
 function readLines(file: string): string[] {
   if (!existsSync(file)) return [];
@@ -87,7 +86,7 @@ export async function runTrial<S>(
       const commands = scripted ? (turn.commands ?? []) : [];
       const scriptFile = join(root, `script-${index}.json`);
       if (scripted) writeFileSync(scriptFile, JSON.stringify(turn.script));
-      const recorder = join(FIXTURES, scripted ? "scripted-provider.ts" : "probe.ts");
+      const recorder = join(import.meta.dir, scripted ? "scripted-provider.ts" : "probe.ts");
       const model = scripted ? "scripted/scripted" : opts.model;
       const env = { ...process.env, AGENT_FOLD_HOME: foldHome, FOLD_EVAL_REQUESTS: requestsFile, FOLD_EVAL_SCRIPT: scriptFile };
       const requestsBefore = readLines(requestsFile).length;

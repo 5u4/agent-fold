@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createReport, providerModels } from "../harness/eval";
-import { runTrial } from "../harness/run-omp";
-import type { Run, Scenario, Turn, Verdict } from "../harness/types";
-import { requestWithoutIndex } from "../harness/view";
+import { runTrial } from "../../harness/run-omp";
+import type { Run, Scenario, Turn, Verdict } from "../../harness/types";
+import { requestWithoutIndex } from "../../harness/view";
+import { createReport, providerModels } from "../eval";
 
 function providerError(turn: Turn): string | undefined {
   return turn.messages.flatMap(message =>
