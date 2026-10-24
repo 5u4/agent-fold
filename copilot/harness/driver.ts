@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sessionFoldDir } from "../fold-dir";
 import { startProxy } from "../proxy";
-import { conversationRoot, readFirstLine } from "../session-root";
+import { awaitConversationRoot, conversationRoot, readFirstLine, SESSION_START_WAIT_MS } from "../session-root";
 import { modelInputText, stripIndexSnapshot } from "./model-input";
 import { parseTurn } from "./transcript";
 import type { Run, Scenario, Turn, Variant } from "./types";
@@ -73,7 +73,14 @@ export async function runTrial<S>(
   const foldHome = join(root, "fold-home");
   const sessionStateDir = join(copilotHome, "session-state");
   for (const dir of [workdir, copilotHome, foldHome]) mkdirSync(dir);
-  const upstream = startUpstream({ workdir, foldHome, sessionStateDir });
+  const sessionId = crypto.randomUUID();
+  const upstream = startUpstream({
+    workdir,
+    foldDirOf:
+      variant === "with-plugin"
+        ? async id => sessionFoldDir(foldHome, await awaitConversationRoot(sessionStateDir, id, SESSION_START_WAIT_MS))
+        : async id => join(sessionStateDir, id, "files"),
+  });
   const proxy =
     variant === "with-plugin"
       ? startProxy({ upstream: upstream.url, secret: randomBytes(32).toString("hex"), foldHome, sessionStateDir })
@@ -82,8 +89,6 @@ export async function runTrial<S>(
     const { COPILOT_API_URL: _, ...inherited } = process.env;
     const entry = proxy === undefined ? upstream.url.origin : `http://127.0.0.1:${proxy.port}`;
     const env = { ...inherited, COPILOT_HOME: copilotHome, COPILOT_API_URL: entry };
-    const grantFoldHome = variant === "with-plugin" || scenario.turns.some(turn => typeof turn !== "string");
-    const sessionId = crypto.randomUUID();
     const setupState = await scenario.setup(workdir);
     const turns: Turn[] = [];
     let foldDir = "";
@@ -97,7 +102,7 @@ export async function runTrial<S>(
         model,
         ...FLAGS,
         index === 0 ? `--session-id=${sessionId}` : `--resume=${sessionId}`,
-        ...(grantFoldHome ? ["--add-dir", foldHome] : []),
+        ...(variant === "with-plugin" ? ["--add-dir", foldHome] : []),
       ];
       const from = upstream.requests.length;
       if (script !== undefined) upstream.arm(script);

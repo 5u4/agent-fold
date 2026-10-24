@@ -1,8 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import type { JsonObject } from "../fold";
-import { sessionFoldDir } from "../fold-dir";
 import { DEFAULT_DISCOVERY_URL, FOLDED_INTERACTIONS, forwardTo, upstreamDiscovery } from "../proxy";
-import { awaitConversationRoot, SESSION_START_WAIT_MS } from "../session-root";
 import { isModelPath, type ModelPath } from "./model-input";
 import { offeredTools, translateStep } from "./script";
 import { scriptedResponse } from "./sse";
@@ -22,22 +20,14 @@ export type Upstream = {
 
 type Script = { steps: ScriptStep[]; used: number; errors: string[] };
 
-export function startUpstream({
-  workdir,
-  foldHome,
-  sessionStateDir,
-}: {
-  workdir: string;
-  foldHome: string;
-  sessionStateDir: string;
-}): Upstream {
+export function startUpstream({ workdir, foldDirOf }: { workdir: string; foldDirOf: (sessionId: string) => Promise<string> }): Upstream {
   const discoverUpstream = upstreamDiscovery(DEFAULT_DISCOVERY_URL);
   const foldDirs = new Map<string, Promise<string>>();
   const requests: ModelRequest[] = [];
   let script: Script | undefined;
 
   async function createFoldDir(sessionId: string): Promise<string> {
-    const dir = await sessionFoldDir(foldHome, await awaitConversationRoot(sessionStateDir, sessionId, SESSION_START_WAIT_MS));
+    const dir = await foldDirOf(sessionId);
     await mkdir(dir, { recursive: true });
     return dir;
   }
