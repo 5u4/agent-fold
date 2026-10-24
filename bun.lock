@@ -10,7 +10,11 @@
     },
     "copilot": {
       "name": "@agent-fold/copilot",
+      "bin": {
+        "agent-fold": "./cli.ts",
+      },
       "devDependencies": {
+        "@agent-fold/evals": "workspace:*",
         "bun-types": "1.3.14",
         "typescript": "5.9.3",
       },

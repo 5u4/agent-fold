@@ -1,67 +1,61 @@
-import type { ActionBody } from "./types";
+import type { Call } from "@agent-fold/evals";
 
-type Classifier = (input: unknown, name: string) => ActionBody[];
+type Classifier = (args: Record<string, unknown>, name: string) => Call;
 
-function stringField(name: string, input: unknown, key: string): string {
-  const value = typeof input === "object" && input !== null ? (input as Record<string, unknown>)[key] : undefined;
+function stringField(name: string, args: Record<string, unknown>, key: string): string {
+  const value = args[key];
   if (typeof value !== "string") throw new Error(`${name}: missing string field "${key}"`);
   return value;
 }
 
-const read: Classifier = (input, name) => [{ kind: "read", path: stringField(name, input, "path") }];
-const searchBy =
-  (key: string): Classifier =>
-  (input, name) => [{ kind: "search", pattern: stringField(name, input, key) }];
-const create: Classifier = (input, name) => [
-  { kind: "write", path: stringField(name, input, "path"), content: stringField(name, input, "file_text") },
-];
-const edit: Classifier = (input, name) => [{ kind: "write", path: stringField(name, input, "path") }];
-const shell: Classifier = (input, name) => [{ kind: "shell", command: stringField(name, input, "command") }];
+const read: Classifier = (args, name) => ({ kind: "read", path: stringField(name, args, "path") });
+const search: Classifier = () => ({ kind: "search" });
+const other: Classifier = () => ({ kind: "other" });
+const create: Classifier = (args, name) => ({
+  kind: "write",
+  path: stringField(name, args, "path"),
+  content: stringField(name, args, "file_text"),
+});
+const shell: Classifier = (args, name) => ({ kind: "shell", command: stringField(name, args, "command") });
 
-const editorCommands: Record<string, Classifier> = { view: read, create, str_replace: edit, insert: edit };
+const editorCommands: Record<string, Classifier> = { view: read, create, str_replace: other, insert: other };
 
-const strReplaceEditor: Classifier = (input, name) => {
-  const command = stringField(name, input, "command");
+const strReplaceEditor: Classifier = (args, name) => {
+  const command = stringField(name, args, "command");
   if (!Object.hasOwn(editorCommands, command)) throw new Error(`${name}: unrecognized field "command" value "${command}"`);
-  return editorCommands[command](input, name);
+  return editorCommands[command](args, name);
 };
 
 const fileHeader = /^\*\*\* (Add File|Update File|Delete File|Move to): (.+)$/;
 
-const applyPatch: Classifier = (input, name) => {
-  if (typeof input !== "string") throw new Error(`${name}: input is not a string patch`);
-  const writes: ActionBody[] = [];
-  let added: { kind: "write"; path: string; content: string } | undefined;
-  for (const line of input.split("\n")) {
+function applyPatch(patch: string): Call {
+  const headers: { op: string; path: string }[] = [];
+  let content = "";
+  for (const line of patch.split("\n")) {
     const header = fileHeader.exec(line);
-    if (header) {
-      added = header[1] === "Add File" ? { kind: "write", path: header[2], content: "" } : undefined;
-      writes.push(added ?? { kind: "write", path: header[2] });
-    } else if (line.startsWith("*** ")) {
-      added = undefined;
-    } else if (added && line.startsWith("+")) {
-      added.content += `${line.slice(1)}\n`;
-    }
+    if (header) headers.push({ op: header[1], path: header[2] });
+    else if (headers.length === 1 && line.startsWith("+")) content += `${line.slice(1)}\n`;
   }
-  if (writes.length === 0) throw new Error(`${name}: patch has no file header`);
-  return writes;
-};
+  return headers.length === 1 && headers[0].op === "Add File" ? { kind: "write", path: headers[0].path, content } : { kind: "other" };
+}
 
 const classifiers: Record<string, Classifier> = {
   view: read,
   str_replace_editor: strReplaceEditor,
-  grep: searchBy("pattern"),
-  rg: searchBy("pattern"),
-  glob: searchBy("pattern"),
-  semantic_code_search: searchBy("query"),
+  grep: search,
+  rg: search,
+  glob: search,
+  semantic_code_search: search,
   create,
-  edit,
-  str_replace: edit,
-  apply_patch: applyPatch,
+  edit: other,
+  str_replace: other,
   bash: shell,
   powershell: shell,
 };
 
-export function classify(name: string, input: unknown): ActionBody[] {
-  return Object.hasOwn(classifiers, name) ? classifiers[name](input, name) : [{ kind: "other", name, input }];
+export const FREEFORM_INPUT_KEY = "input";
+
+export function classify(name: string, args: Record<string, unknown>): Call {
+  if (name === "apply_patch") return applyPatch(stringField(name, args, FREEFORM_INPUT_KEY));
+  return Object.hasOwn(classifiers, name) ? classifiers[name](args, name) : { kind: "other" };
 }

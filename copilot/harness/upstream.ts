@@ -1,10 +1,10 @@
 import { mkdir } from "node:fs/promises";
+import type { ScriptStep } from "@agent-fold/evals";
 import type { JsonObject } from "../fold";
 import { DEFAULT_DISCOVERY_URL, FOLDED_INTERACTIONS, forwardTo, upstreamDiscovery } from "../proxy";
 import { isModelPath, type ModelPath } from "./model-input";
 import { offeredTools, translateStep } from "./script";
 import { scriptedResponse } from "./sse";
-import type { ScriptStep } from "./types";
 
 export type ModelRequest = { sessionId: string; interactionType: string; path: ModelPath; body: JsonObject };
 

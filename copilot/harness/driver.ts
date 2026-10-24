@@ -2,12 +2,12 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Harness, Run, Scenario, Turn, Variant } from "@agent-fold/evals";
 import { sessionFoldDir } from "../fold-dir";
 import { startProxy } from "../proxy";
 import { awaitConversationRoot, conversationRoot, readFirstLine, SESSION_START_WAIT_MS } from "../session-root";
 import { modelInputText, stripIndexSnapshot } from "./model-input";
 import { parseTurn } from "./transcript";
-import type { Run, Scenario, Turn, Variant } from "./types";
 import { startUpstream, type Upstream } from "./upstream";
 
 const TURN_TIMEOUT_MS = 240_000;
@@ -23,17 +23,13 @@ const FLAGS = [
   "json",
 ];
 
-let cachedVersion: string | undefined;
-
-export function copilotVersion(): string {
-  if (cachedVersion !== undefined) return cachedVersion;
+function copilotVersion(): string {
   const proc = Bun.spawnSync(["copilot", "--no-auto-update", "--version"], { stdin: "ignore" });
   const output = proc.stdout.toString();
   const version = /^GitHub Copilot CLI (\S+)\.$/m.exec(output)?.[1];
   if (proc.exitCode !== 0 || version === undefined) {
     throw new Error(`copilot --no-auto-update --version exited ${proc.exitCode} without "GitHub Copilot CLI <version>.": ${output}`);
   }
-  cachedVersion = version;
   return version;
 }
 
@@ -135,4 +131,9 @@ export async function runTrial<S>(
     upstream.stop();
     rmSync(root, { recursive: true, force: true });
   }
+}
+
+export function copilotHarness(): Harness {
+  const version = copilotVersion();
+  return { name: `copilot ${version}`, runTrial: (scenario, opts) => runTrial(scenario, { ...opts, version }) };
 }

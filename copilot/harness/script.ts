@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { FOLD_DIR, type ScriptStep } from "@agent-fold/evals";
 import type { JsonObject } from "../fold";
 import type { ModelPath } from "./model-input";
-import { FOLD_DIR, type ScriptStep } from "./types";
 
 export type ToolKind = "call" | "custom";
 
@@ -32,7 +32,7 @@ function addFilePatch(path: string, content: string): string {
   return `*** Begin Patch\n*** Add File: ${path}\n${lines.map(line => `+${line}\n`).join("")}*** End Patch\n`;
 }
 
-function candidates(step: Exclude<ScriptStep, { reply: string }>, workdir: string, fill: (text: string) => string): ScriptedCall[] {
+function candidates(step: Exclude<ScriptStep, { kind: "reply" }>, workdir: string, fill: (text: string) => string): ScriptedCall[] {
   switch (step.kind) {
     case "read":
       return [{ kind: "call", name: "view", input: { path: resolve(workdir, fill(step.path)) } }];
@@ -54,7 +54,7 @@ function candidates(step: Exclude<ScriptStep, { reply: string }>, workdir: strin
 
 export function translateStep(step: ScriptStep, { tools, workdir, foldDir }: ScriptContext): ScriptedOutput {
   const fill = (text: string) => text.replaceAll(FOLD_DIR, foldDir);
-  if ("reply" in step) return { kind: "text", text: fill(step.reply) };
+  if (step.kind === "reply") return { kind: "text", text: fill(step.text) };
   const options = candidates(step, workdir, fill);
   const chosen = options.find(option => tools.get(option.name) === option.kind);
   if (chosen !== undefined) return chosen;

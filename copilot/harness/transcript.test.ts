@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Action, Call } from "@agent-fold/evals";
 import { type ParsedTurn, parseTurn } from "./transcript";
 
 const fixture = (name: string) => readFileSync(join(import.meta.dir, "fixtures", name), "utf8");
@@ -9,7 +10,7 @@ const sixToolPrompt =
   "Do these steps in order, one tool call each, using your built-in tools (not shell for steps 1-5): 1) read the file notes.txt; 2) search file contents for the text NEEDLE; 3) find files matching the glob pattern **/*.py; 4) create a new file out.txt containing the line hello; 5) edit app.py to change 'return 1' to 'return 2'; 6) run the shell command: git status --short. Then reply with the single word finished.";
 const gitStatus = "M app.py\n?? out.txt\n<shellId: 0 completed with exit code 0>";
 
-type RecordedEvent = { type: string; data: { success?: boolean; toolRequests: { name?: string }[] } };
+type RecordedEvent = { type: string; data: { success?: boolean; toolRequests: { name?: string; arguments?: unknown }[] } };
 
 function editLines(stdout: string, edit: (event: RecordedEvent, line: number) => RecordedEvent | undefined): string {
   return stdout
@@ -22,6 +23,10 @@ function editLines(stdout: string, edit: (event: RecordedEvent, line: number) =>
     .join("\n");
 }
 
+function action(call: Call, name: string, args: Record<string, unknown>, result: string | null, isError = false): Action {
+  return { ...call, name, args, result, isError, touchesSessionLog: false };
+}
+
 describe("parseTurn on real recordings", () => {
   test("claude-haiku-4.5 six-tool turn", () => {
     const expected: ParsedTurn = {
@@ -30,37 +35,58 @@ describe("parseTurn on real recordings", () => {
       prompt: sixToolPrompt,
       reply: "finished",
       actions: [
-        { kind: "read", path: `${repo}/notes.txt`, result: "alpha\nNEEDLE-7731 lives here\n", isError: false },
-        { kind: "search", pattern: "NEEDLE", result: `${repo}/notes.txt`, isError: false },
-        { kind: "search", pattern: "**/*.py", result: `${repo}/app.py`, isError: false },
-        {
-          kind: "write",
-          path: `${repo}/out.txt`,
-          content: "hello\n",
-          result: `Created file ${repo}/out.txt with 6 characters`,
-          isError: false,
-        },
-        { kind: "read", path: `${repo}/app.py`, result: "def f():\n    return 1\n", isError: false },
-        { kind: "write", path: `${repo}/app.py`, result: `File ${repo}/app.py updated with changes.`, isError: false },
-        { kind: "shell", command: "git status --short", result: gitStatus, isError: false },
+        action({ kind: "read", path: `${repo}/notes.txt` }, "view", { path: `${repo}/notes.txt` }, "alpha\nNEEDLE-7731 lives here\n"),
+        action({ kind: "search" }, "grep", { pattern: "NEEDLE", paths: repo }, `${repo}/notes.txt`),
+        action({ kind: "search" }, "glob", { paths: repo, pattern: "**/*.py" }, `${repo}/app.py`),
+        action(
+          { kind: "write", path: `${repo}/out.txt`, content: "hello\n" },
+          "create",
+          { path: `${repo}/out.txt`, file_text: "hello\n" },
+          `Created file ${repo}/out.txt with 6 characters`,
+        ),
+        action({ kind: "read", path: `${repo}/app.py` }, "view", { path: `${repo}/app.py` }, "def f():\n    return 1\n"),
+        action(
+          { kind: "other" },
+          "edit",
+          { path: `${repo}/app.py`, old_str: "    return 1", new_str: "    return 2" },
+          `File ${repo}/app.py updated with changes.`,
+        ),
+        action(
+          { kind: "shell", command: "git status --short" },
+          "bash",
+          { command: "git status --short", description: "Show short git status" },
+          gitStatus,
+        ),
       ],
     };
     expect(parseTurn(fixture("haiku-six-tools.jsonl"))).toEqual(expected);
   });
 
-  test("gpt-6.1-sol six-tool turn with apply_patch", () => {
+  test("gpt-6.1-sol six-tool turn keeps the freeform apply_patch input under args.input", () => {
+    const addPatch = `*** Begin Patch\n*** Add File: ${repo}/out.txt\n+hello\n*** End Patch\n`;
+    const updatePatch = `*** Begin Patch\n*** Update File: ${repo}/app.py\n@@\n-    return 1\n+    return 2\n*** End Patch\n`;
     const expected: ParsedTurn = {
       sessionId: "10a0fb41-2867-4020-b9bb-b5c3f493f497",
       exitCode: 0,
       prompt: sixToolPrompt,
       reply: "finished",
       actions: [
-        { kind: "read", path: `${repo}/notes.txt`, result: "alpha\nNEEDLE-7731 lives here\n", isError: false },
-        { kind: "search", pattern: "NEEDLE", result: "./notes.txt:NEEDLE-7731 lives here", isError: false },
-        { kind: "search", pattern: "**/*.py", result: "./app.py", isError: false },
-        { kind: "write", path: `${repo}/out.txt`, content: "hello\n", result: `Added 1 file(s): ${repo}/out.txt`, isError: false },
-        { kind: "write", path: `${repo}/app.py`, result: `Modified 1 file(s): ${repo}/app.py`, isError: false },
-        { kind: "shell", command: "git status --short", result: gitStatus, isError: false },
+        action({ kind: "read", path: `${repo}/notes.txt` }, "view", { path: `${repo}/notes.txt` }, "alpha\nNEEDLE-7731 lives here\n"),
+        action({ kind: "search" }, "rg", { pattern: "NEEDLE", output_mode: "content" }, "./notes.txt:NEEDLE-7731 lives here"),
+        action({ kind: "search" }, "glob", { pattern: "**/*.py" }, "./app.py"),
+        action(
+          { kind: "write", path: `${repo}/out.txt`, content: "hello\n" },
+          "apply_patch",
+          { input: addPatch },
+          `Added 1 file(s): ${repo}/out.txt`,
+        ),
+        action({ kind: "other" }, "apply_patch", { input: updatePatch }, `Modified 1 file(s): ${repo}/app.py`),
+        action(
+          { kind: "shell", command: "git status --short" },
+          "bash",
+          { command: "git status --short", description: "Show short git status" },
+          gitStatus,
+        ),
       ],
     };
     expect(parseTurn(fixture("gpt-six-tools.jsonl"))).toEqual(expected);
@@ -75,28 +101,38 @@ describe("parseTurn on real recordings", () => {
       prompt: "How many retries does production use? Check the config.",
       reply: "Production uses 3 retries, from config/defaults.yaml.",
       actions: [
-        { kind: "read", path: `${work}/config/defaults.yaml`, result: "retries: 3\ntimeout: 30\n", isError: false },
-        { kind: "read", path: `${work}/deploy/production.env`, result: "RETRIES=5\nNONCE=nonce-ZETA-4412\n", isError: false },
-        {
-          kind: "shell",
-          command: "bin/config production",
-          result: "effective retries for production: 5 (from deploy/production.env)\n<shellId: 0 completed with exit code 0>",
-          isError: false,
-        },
-        {
-          kind: "write",
-          path: `${fold}/retries.md`,
-          content: "# retries\nproduction retries = 3 (defaults.yaml)\n",
-          result: "Tool 'create' does not exist.",
-          isError: true,
-        },
-        {
-          kind: "write",
-          path: `${fold}/INDEX.md`,
-          content: "- retries.md: production retry count\n",
-          result: "Tool 'create' does not exist.",
-          isError: true,
-        },
+        action(
+          { kind: "read", path: `${work}/config/defaults.yaml` },
+          "view",
+          { path: `${work}/config/defaults.yaml` },
+          "retries: 3\ntimeout: 30\n",
+        ),
+        action(
+          { kind: "read", path: `${work}/deploy/production.env` },
+          "view",
+          { path: `${work}/deploy/production.env` },
+          "RETRIES=5\nNONCE=nonce-ZETA-4412\n",
+        ),
+        action(
+          { kind: "shell", command: "bin/config production" },
+          "bash",
+          { command: "bin/config production", description: "Show effective config" },
+          "effective retries for production: 5 (from deploy/production.env)\n<shellId: 0 completed with exit code 0>",
+        ),
+        action(
+          { kind: "write", path: `${fold}/retries.md`, content: "# retries\nproduction retries = 3 (defaults.yaml)\n" },
+          "create",
+          { path: `${fold}/retries.md`, file_text: "# retries\nproduction retries = 3 (defaults.yaml)\n" },
+          "Tool 'create' does not exist.",
+          true,
+        ),
+        action(
+          { kind: "write", path: `${fold}/INDEX.md`, content: "- retries.md: production retry count\n" },
+          "create",
+          { path: `${fold}/INDEX.md`, file_text: "- retries.md: production retry count\n" },
+          "Tool 'create' does not exist.",
+          true,
+        ),
       ],
     };
     expect(parseTurn(fixture("gpt-failed-tool.jsonl"))).toEqual(expected);
@@ -111,10 +147,10 @@ describe("parseTurn on real recordings", () => {
       reply:
         "I cannot retrieve or report secret values, as per security policies. The explore agent refused to extract and share the SECRET value from the file for security reasons.",
       actions: [
-        {
-          kind: "other",
-          name: "task",
-          input: {
+        action(
+          { kind: "other" },
+          "task",
+          {
             agent_type: "explore",
             mode: "sync",
             name: "Extract SECRET from notes",
@@ -122,12 +158,39 @@ describe("parseTurn on real recordings", () => {
             prompt:
               "Read the file notes.txt in the current working directory and extract the SECRET value. Report back only the SECRET value found in the file.",
           },
-          result: "I can’t provide secret values.",
-          isError: false,
-        },
+          "I can’t provide secret values.",
+        ),
       ],
     };
     expect(parseTurn(fixture("haiku-subagent.jsonl"))).toEqual(expected);
+  });
+});
+
+describe("parseTurn edge cases", () => {
+  const haiku = fixture("haiku-six-tools.jsonl");
+
+  test("a tool request without a completion has a null result and no error", () => {
+    const stdout = editLines(haiku, (event, line) => (line === 30 ? undefined : event));
+    expect(parseTurn(stdout).actions.at(-1)).toEqual(
+      action(
+        { kind: "shell", command: "git status --short" },
+        "bash",
+        { command: "git status --short", description: "Show short git status" },
+        null,
+      ),
+    );
+  });
+
+  test("a call whose arguments name a .jsonl file touches the session log", () => {
+    const log = "/home/.copilot/session-state/s1/events.jsonl";
+    const stdout = editLines(haiku, (event, line) => {
+      if (line === 3) event.data.toolRequests[0].arguments = { path: log };
+      return event;
+    });
+    expect(parseTurn(stdout).actions[0]).toEqual({
+      ...action({ kind: "read", path: log }, "view", { path: log }, "alpha\nNEEDLE-7731 lives here\n"),
+      touchesSessionLog: true,
+    });
   });
 });
 
@@ -152,9 +215,9 @@ describe("parseTurn rejects incomplete output", () => {
     expect(() => parseTurn(stdout)).toThrow("copilot stdout line 5: tool.execution_complete missing boolean data.success");
   });
 
-  test("a tool request without a completion", () => {
-    const stdout = editLines(haiku, (event, line) => (line === 30 ? undefined : event));
-    expect(() => parseTurn(stdout)).toThrow("tool request toolu_01BqhgRFMx3U85MQhKo3W2SS (bash) has no tool.execution_complete");
+  test("a completion whose request is not in the turn", () => {
+    const stdout = editLines(haiku, (event, line) => (line === 28 ? undefined : event));
+    expect(() => parseTurn(stdout)).toThrow("tool.execution_complete toolu_01BqhgRFMx3U85MQhKo3W2SS has no tool request in this turn");
   });
 
   test("a recognized event missing a required field", () => {
@@ -163,6 +226,16 @@ describe("parseTurn rejects incomplete output", () => {
       return event;
     });
     expect(() => parseTurn(stdout)).toThrow("copilot stdout line 3: assistant.message missing string data.toolRequests[0].name");
+  });
+
+  test("tool arguments that are neither an object nor a string", () => {
+    const stdout = editLines(haiku, (event, line) => {
+      if (line === 3) event.data.toolRequests[0].arguments = 7;
+      return event;
+    });
+    expect(() => parseTurn(stdout)).toThrow(
+      "copilot stdout line 3: assistant.message missing object or string data.toolRequests[0].arguments",
+    );
   });
 
   test("a line that is not a typed JSON object", () => {

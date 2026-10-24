@@ -11,9 +11,11 @@
   "scripts": {
     "build": "bun build.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "eval": "bun test --max-concurrency=4 ./evals/behavior.eval.ts"
   },
   "devDependencies": {
+    "@agent-fold/evals": "workspace:*",
     "bun-types": "1.3.14",
     "typescript": "5.9.3"
   }

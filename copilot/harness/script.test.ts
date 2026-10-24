@@ -2,8 +2,8 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { FOLD_DIR } from "@agent-fold/evals";
 import { offeredTools, translateStep } from "./script";
-import { FOLD_DIR } from "./types";
 
 const claudeTools = offeredTools("/v1/messages", {
   model: "claude-haiku-4.5",
@@ -58,7 +58,10 @@ test("a Claude-family request gets view, bash and create with absolute paths and
     name: "create",
     input: { path: "/fold/s1/INDEX.md", file_text: "- /fold/s1/retries.md: retries\n" },
   });
-  expect(translateStep({ reply: `Notes are in ${FOLD_DIR}.` }, ctx)).toEqual({ kind: "text", text: "Notes are in /fold/s1." });
+  expect(translateStep({ kind: "reply", text: `Notes are in ${FOLD_DIR}.` }, ctx)).toEqual({
+    kind: "text",
+    text: "Notes are in /fold/s1.",
+  });
 });
 
 test("a GPT-family request writes through an apply_patch Add File patch", () => {
