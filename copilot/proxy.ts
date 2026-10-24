@@ -4,11 +4,11 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import rulesTemplate from "./context/fold.md" with { type: "text" };
 import { type Format, type Injection, type JsonObject, rewriteBody } from "./fold";
-import { findProjectRoot, foldDir, withFoldDir } from "./fold-dir";
+import { sessionFoldDir, withFoldDir } from "./fold-dir";
 import { formats } from "./formats";
 import { PROTOCOL, proof, STATUS_PATH } from "./proxy-state";
 import { indexMessage } from "./session-index";
-import { type ConversationRoot, conversationRoot } from "./session-root";
+import { awaitConversationRoot, type ConversationRoot, SESSION_START_WAIT_MS } from "./session-root";
 
 export type ProxyOptions = {
   upstream: URL | undefined;
@@ -26,14 +26,9 @@ type Route =
   | { kind: "fold"; format: Format<object>; sessionId: string }
   | { kind: "forward" };
 
-const DEFAULT_DISCOVERY_URL = new URL("https://api.github.com/copilot_internal/user");
+export const DEFAULT_DISCOVERY_URL = new URL("https://api.github.com/copilot_internal/user");
 
-// Copilot CLI 1.0.101 writes events.jsonl of a new session about when it sends the session's first model request.
-const SESSION_START_WAIT_MS = 2000;
-
-const SESSION_START_POLL_MS = 50;
-
-const FOLDED_INTERACTIONS: Record<string, true> = { "conversation-user": true, "conversation-agent": true };
+export const FOLDED_INTERACTIONS: Record<string, true> = { "conversation-user": true, "conversation-agent": true };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -101,29 +96,57 @@ function cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Prom
   return promise;
 }
 
+async function discover(discoveryUrl: URL, authorization: string): Promise<URL> {
+  const response = await fetch(discoveryUrl, { headers: { authorization, accept: "application/json" } });
+  if (!response.ok) throw new Error(`${discoveryUrl.host} answered ${response.status}`);
+  const json: unknown = await response.json();
+  const endpoints = typeof json === "object" && json !== null && "endpoints" in json ? json.endpoints : undefined;
+  const api = typeof endpoints === "object" && endpoints !== null && "api" in endpoints ? endpoints.api : undefined;
+  if (typeof api !== "string" || !URL.canParse(api)) throw new Error(`${discoveryUrl.host} named no endpoints.api`);
+  return new URL(api);
+}
+
+export function upstreamDiscovery(discoveryUrl: URL): (headers: Headers) => Promise<URL> {
+  const upstreams = new Map<string, Promise<URL>>();
+  return headers => {
+    const authorization = headers.get("authorization");
+    if (authorization === null) return Promise.reject(new Error("the request has no Authorization header to discover the upstream with"));
+    return cached(upstreams, createHash("sha256").update(authorization).digest("hex"), () => discover(discoveryUrl, authorization));
+  };
+}
+
+export async function forwardTo(base: URL, request: Request, path: string, search: string, body: BodyInit | null, bodyChanged: boolean) {
+  const url = new URL(`${base.origin}${base.pathname.replace(/\/$/, "")}${path}${search}`);
+  const upstream = await fetch(url, {
+    method: request.method,
+    headers: forwardHeaders(request.headers, bodyChanged),
+    body,
+    signal: request.signal,
+    redirect: "manual",
+  });
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders(upstream.headers),
+  });
+}
+
 export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
   const { secret, foldHome, sessionStateDir } = options;
-  const discoveryUrl = options.discoveryUrl ?? DEFAULT_DISCOVERY_URL;
+  const discoverUpstream = upstreamDiscovery(options.discoveryUrl ?? DEFAULT_DISCOVERY_URL);
   const injections = new Map<string, Promise<Injection>>();
-  const upstreams = new Map<string, Promise<URL>>();
   const launches = new Set<string>();
   const sessionLastSeen = new Map<string, number>();
   const awaitedStarts = new Set<string>();
 
-  async function sessionRoot(sessionId: string): Promise<ConversationRoot> {
-    const deadline = awaitedStarts.has(sessionId) ? 0 : Date.now() + SESSION_START_WAIT_MS;
+  function sessionRoot(sessionId: string): Promise<ConversationRoot> {
+    const waitMs = awaitedStarts.has(sessionId) ? 0 : SESSION_START_WAIT_MS;
     awaitedStarts.add(sessionId);
-    for (;;) {
-      const root = conversationRoot(sessionStateDir, sessionId);
-      if (root !== undefined) return root;
-      if (Date.now() >= deadline) throw new Error(`no session.start for session ${sessionId}`);
-      await Bun.sleep(SESSION_START_POLL_MS);
-    }
+    return awaitConversationRoot(sessionStateDir, sessionId, waitMs);
   }
 
   async function injectionFor(sessionId: string): Promise<Injection> {
-    const root = await sessionRoot(sessionId);
-    const dir = foldDir({ foldHome, projectRoot: await findProjectRoot(root.cwd), startTime: root.startTime, sessionId: root.sessionId });
+    const dir = await sessionFoldDir(foldHome, await sessionRoot(sessionId));
     await mkdir(dir, { recursive: true });
     let run: { key: string; text: string } | undefined;
     return {
@@ -133,23 +156,6 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
         return run.text;
       },
     };
-  }
-
-  async function discover(authorization: string): Promise<URL> {
-    const response = await fetch(discoveryUrl, { headers: { authorization, accept: "application/json" } });
-    if (!response.ok) throw new Error(`${discoveryUrl.host} answered ${response.status}`);
-    const json: unknown = await response.json();
-    const endpoints = typeof json === "object" && json !== null && "endpoints" in json ? json.endpoints : undefined;
-    const api = typeof endpoints === "object" && endpoints !== null && "api" in endpoints ? endpoints.api : undefined;
-    if (typeof api !== "string" || !URL.canParse(api)) throw new Error(`${discoveryUrl.host} named no endpoints.api`);
-    return new URL(api);
-  }
-
-  function upstreamBase(headers: Headers): Promise<URL> {
-    if (options.upstream !== undefined) return Promise.resolve(options.upstream);
-    const authorization = headers.get("authorization");
-    if (authorization === null) return Promise.reject(new Error("the request has no Authorization header to discover the upstream with"));
-    return cached(upstreams, createHash("sha256").update(authorization).digest("hex"), () => discover(authorization));
   }
 
   async function foldedBody(format: Format<object>, sessionId: string, bytes: ArrayBuffer): Promise<string | undefined> {
@@ -165,7 +171,7 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
   async function forward(request: Request, path: string, search: string, target: Route): Promise<{ response: Response; folded: boolean }> {
     let base: URL;
     try {
-      base = await upstreamBase(request.headers);
+      base = options.upstream ?? (await discoverUpstream(request.headers));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       return { response: new Response(`agent-fold: no Copilot API upstream: ${reason}\n`, { status: 502 }), folded: false };
@@ -178,22 +184,7 @@ export function startProxy(options: ProxyOptions): Bun.Server<undefined> {
       folded = rewritten !== undefined;
       body = rewritten ?? bytes;
     }
-    const url = new URL(`${base.origin}${base.pathname.replace(/\/$/, "")}${path}${search}`);
-    const upstream = await fetch(url, {
-      method: request.method,
-      headers: forwardHeaders(request.headers, folded),
-      body,
-      signal: request.signal,
-      redirect: "manual",
-    });
-    return {
-      response: new Response(upstream.body, {
-        status: upstream.status,
-        statusText: upstream.statusText,
-        headers: responseHeaders(upstream.headers),
-      }),
-      folded,
-    };
+    return { response: await forwardTo(base, request, path, search, body, folded), folded };
   }
 
   function status(url: URL, port: number): Response {

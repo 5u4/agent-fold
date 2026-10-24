@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import type { ConversationRoot } from "./session-root";
 
 const AGENT = "copilot";
 
@@ -49,4 +50,8 @@ export async function findProjectRoot(cwd: string): Promise<string> {
   if (!commonDir) return cwd;
   if (basename(commonDir) === ".git") return dirname(commonDir);
   return (await gitPath(cwd, "--show-toplevel")) ?? cwd;
+}
+
+export async function sessionFoldDir(foldHome: string, root: ConversationRoot): Promise<string> {
+  return foldDir({ foldHome, projectRoot: await findProjectRoot(root.cwd), startTime: root.startTime, sessionId: root.sessionId });
 }
