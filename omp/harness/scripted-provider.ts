@@ -1,8 +1,9 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { type AssistantMessage, createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
+import { join, resolve } from "node:path";
+import { FOLD_DIR } from "@agent-fold/evals";
+import { type AssistantMessage, createAssistantMessageEventStream, type Message } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import { FOLD_DIR, type Reply, type ScriptedRequest } from "./types";
+import type { Reply, ScriptedRequest } from "./types";
 
 const zeroCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -26,6 +27,15 @@ function foldDirIn(systemPrompt: string[], foldHome: string | undefined): string
   if (start === -1) return undefined;
   const segments = text.slice(start + foldHome.length + 1).match(/^([^/\s`]+)\/([^/\s`]+)\/([^/\s`]+)/);
   return segments ? join(foldHome, segments[1], segments[2], segments[3]) : undefined;
+}
+
+function writeTargetExists(path: string, messages: Message[]): boolean {
+  if (!path.startsWith("local://")) return existsSync(resolve(path));
+  return messages.some(
+    message =>
+      message.role === "assistant" &&
+      message.content.some(block => block.type === "toolCall" && block.name === "write" && block.arguments.path === path),
+  );
 }
 
 export default function scriptedProvider(pi: ExtensionAPI) {
@@ -57,6 +67,10 @@ export default function scriptedProvider(pi: ExtensionAPI) {
       if (!scripted) throw new Error(`script has no reply for request ${index} of this turn`);
       const foldDir = foldDirIn(recorded.systemPrompt, process.env.AGENT_FOLD_HOME);
       const reply: Reply = JSON.parse(JSON.stringify(scripted).replaceAll(`${FOLD_DIR}/`, foldDir ? `${foldDir}/` : "local://"));
+      if ("toolCall" in reply && reply.newFile) {
+        const path = String(reply.toolCall.arguments.path);
+        if (writeTargetExists(path, recorded.messages)) throw new Error(`scripted write target already exists: ${path}`);
+      }
       const stopReason = "text" in reply ? "stop" : "toolUse";
       const message: AssistantMessage = {
         role: "assistant",

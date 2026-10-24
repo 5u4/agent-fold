@@ -15,9 +15,17 @@
         "typescript": "5.9.3",
       },
     },
+    "evals": {
+      "name": "@agent-fold/evals",
+      "devDependencies": {
+        "bun-types": "1.3.14",
+        "typescript": "5.9.3",
+      },
+    },
     "omp": {
       "name": "@agent-fold/omp",
       "devDependencies": {
+        "@agent-fold/evals": "workspace:*",
         "@oh-my-pi/pi-agent-core": "18.8.7",
         "@oh-my-pi/pi-ai": "18.8.7",
         "@oh-my-pi/pi-coding-agent": "18.8.7",
@@ -28,6 +36,8 @@
   },
   "packages": {
     "@agent-fold/copilot": ["@agent-fold/copilot@workspace:copilot"],
+
+    "@agent-fold/evals": ["@agent-fold/evals@workspace:evals"],
 
     "@agent-fold/omp": ["@agent-fold/omp@workspace:omp"],
 

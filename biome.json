@@ -17,5 +17,36 @@
     "formatter": {
       "arrowParentheses": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["evals/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "**/omp",
+                      "**/omp/**",
+                      "**/copilot",
+                      "**/copilot/**",
+                      "@agent-fold/omp",
+                      "@agent-fold/omp/**",
+                      "@agent-fold/copilot",
+                      "@agent-fold/copilot/**"
+                    ],
+                    "message": "evals/ never imports an agent directory."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

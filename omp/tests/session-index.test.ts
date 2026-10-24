@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
+import { FOLD_DIR } from "@agent-fold/evals";
 import type { Message } from "@oh-my-pi/pi-ai";
 import { runTrial } from "../harness/run-omp";
-import { FOLD_DIR, type ScriptedRequest } from "../harness/types";
+import type { ScriptedRequest } from "../harness/types";
 import { compactMessage } from "../harness/view";
 
 const write = (content: string) => ({ toolCall: { name: "write", arguments: { path: `${FOLD_DIR}/INDEX.md`, content } } });

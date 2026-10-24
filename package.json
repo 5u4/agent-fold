@@ -2,12 +2,14 @@
   "private": true,
   "workspaces": [
     "omp",
-    "copilot"
+    "copilot",
+    "evals"
   ],
   "scripts": {
     "format": "biome format --write .",
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun run --filter '*' test"
+    "test": "bun run --filter '*' test",
+    "lint": "biome lint ."
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15"

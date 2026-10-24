@@ -2,10 +2,11 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createReport } from "@agent-fold/evals";
 import { runTrial } from "../../harness/run-omp";
 import type { Run, Scenario, Turn, Verdict } from "../../harness/types";
 import { requestWithoutIndex } from "../../harness/view";
-import { createReport, providerModels } from "../eval";
+import { providerModels, RESULTS_FILE } from "../eval";
 
 function providerError(turn: Turn): string | undefined {
   return turn.messages.flatMap(message =>
@@ -48,7 +49,7 @@ const scenario: Scenario<{ nonce: string }> = {
 };
 
 const models = providerModels();
-const reports = models.map(model => createReport(title, model));
+const reports = models.map(model => createReport({ harness: "omp", scenario: title, model, file: RESULTS_FILE }));
 
 afterAll(() => console.log(reports.flatMap(report => report.summary()).join("\n")));
 

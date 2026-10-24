@@ -4,7 +4,9 @@
 agent-fold keeps one session's main context a clean thread of decisions. It buys focus, not token savings. Its scope ends at the session. What the agent needs later, it finds again with search.
 
 ## Layout
-Each top-level agent directory, such as `omp/`, is a self-contained plugin for one coding agent with its own code, prompts, tests, and evals. Before changing one, read its `AGENTS.md` for that agent's rules and verification. Agent directories never import from each other.
+Each agent directory, such as `omp/` or `copilot/`, is a self-contained plugin for one coding agent with its own code, prompts, tests, and evals. Before changing one, read its `AGENTS.md` for that agent's rules and verification.
+
+The top-level `evals/` directory is not an agent directory. It is the shared `@agent-fold/evals` package that holds the behavior scenarios, their grades, the trial runner, and reporting. It spends no tokens itself; an agent directory's eval entry drives it with that agent's harness adapter. `evals/CONTRACT.md` defines what an adapter implements. Agent directories may import `evals/`. `evals/` never imports an agent directory, and agent directories never import each other. `bun run lint` fails when `evals/` imports an agent directory.
 
 Inside an agent directory, `tests/` never spends tokens and `evals/` does. A suite that needs a real model is an eval, and its file ends in `.eval.ts` so `bun test` skips it. Unit tests of the plugin source stay next to that source.
 
