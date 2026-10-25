@@ -37,7 +37,11 @@
                       "@agent-fold/omp",
                       "@agent-fold/omp/**",
                       "@agent-fold/copilot",
-                      "@agent-fold/copilot/**"
+                      "@agent-fold/copilot/**",
+                      "**/pi",
+                      "**/pi/**",
+                      "@agent-fold/pi",
+                      "@agent-fold/pi/**"
                     ],
                     "message": "evals/ never imports an agent directory."
                   }
