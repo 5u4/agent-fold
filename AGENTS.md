@@ -11,7 +11,7 @@ The top-level `evals/` directory is not an agent directory. It is the shared `@a
 Inside an agent directory, `tests/` never spends tokens and `evals/` does. A suite that needs a real model is an eval, and its file ends in `.eval.ts` so `bun test` skips it. Unit tests of the plugin source stay next to that source.
 
 ## Invariants
-- The view of folded runs is a pure function of the loop messages and the switch entries on the session branch. The same messages and switch entries always give the same view, so a replayed session shows the model what it saw live. The current run also carries the `INDEX.md` snapshot read when the run started; it is never written to the session. Only the user's `/agent-fold` command appends a switch entry. The hooks never write the session or mutate the loop.
+- The view of folded runs is a pure function of the loop messages and the switch entries on the session branch. The same messages and switch entries always give the same view, so a replayed session shows the model what it saw live. The current run also carries the `INDEX.md` snapshot read when the run started; it is never written to the session. Only the user's `/agent-fold` command appends a switch entry or writes a per-session switch value. The hooks never write the session or mutate the loop.
 - Fail open. If folding throws, send the unfolded messages.
 - Never write user settings.
 

@@ -69,3 +69,17 @@ Restart pi or run `/reload` to load the extension.
 ```sh
 pi remove git:github.com/5u4/agent-fold
 ```
+
+### OpenCode v2
+
+```sh
+opencode plugin add github:5u4/agent-fold#path:opencode-v2
+```
+
+Restart opencode to load the plugin.
+
+#### Uninstall
+
+```sh
+opencode plugin remove github:5u4/agent-fold#path:opencode-v2
+```
