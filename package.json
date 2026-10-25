@@ -3,8 +3,14 @@
   "workspaces": [
     "omp",
     "copilot",
+    "pi",
     "evals"
   ],
+  "pi": {
+    "extensions": [
+      "./pi/index.ts"
+    ]
+  },
   "scripts": {
     "format": "biome format --write .",
     "typecheck": "bun run --filter '*' typecheck",

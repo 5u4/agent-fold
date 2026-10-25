@@ -55,3 +55,17 @@ copilot plugin uninstall agent-fold@agent-fold
 copilot plugin marketplace remove agent-fold
 cd agent-fold/copilot && bun unlink
 ```
+
+### Pi
+
+```sh
+pi install git:github.com/5u4/agent-fold
+```
+
+Restart pi or run `/reload` to load the extension.
+
+#### Uninstall
+
+```sh
+pi remove git:github.com/5u4/agent-fold
+```

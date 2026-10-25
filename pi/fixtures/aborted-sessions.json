@@ -1,0 +1,226 @@
+{
+  "rpcAbort": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "q1 run sleep"
+        }
+      ],
+      "timestamp": 1792904363725
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_1",
+          "name": "bash",
+          "arguments": {
+            "command": "sleep 30"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "fake",
+      "model": "fake",
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1792904363735,
+      "responseId": "fake",
+      "rawStopReason": "tool_calls",
+      "durationMs": 17,
+      "thinkingLevel": "off"
+    },
+    {
+      "role": "toolResult",
+      "toolCallId": "call_1",
+      "toolName": "bash",
+      "content": [
+        {
+          "type": "text",
+          "text": "Operation aborted"
+        }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1792904363759
+    },
+    {
+      "role": "assistant",
+      "content": [],
+      "api": "openai-completions",
+      "provider": "fake",
+      "model": "fake",
+      "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "error",
+      "errorMessage": "This operation was aborted",
+      "timestamp": 1792904363760,
+      "durationMs": 0,
+      "thinkingLevel": "off"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "q2"
+        }
+      ],
+      "timestamp": 1792904363986
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "done 2"
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "fake",
+      "model": "fake",
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "stop",
+      "timestamp": 1792904363995,
+      "responseId": "fake",
+      "rawStopReason": "stop",
+      "durationMs": 18,
+      "thinkingLevel": "off"
+    }
+  ],
+  "killed": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "q1 run sleep"
+        }
+      ],
+      "timestamp": 1792904364247
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_1",
+          "name": "bash",
+          "arguments": {
+            "command": "sleep 30"
+          }
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "fake",
+      "model": "fake",
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 1792904364257,
+      "responseId": "fake",
+      "rawStopReason": "tool_calls",
+      "durationMs": 17,
+      "thinkingLevel": "off"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "q2"
+        }
+      ],
+      "timestamp": 1792904364510
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "done 2"
+        }
+      ],
+      "api": "openai-completions",
+      "provider": "fake",
+      "model": "fake",
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0,
+        "totalTokens": 2,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "total": 0
+        }
+      },
+      "stopReason": "stop",
+      "timestamp": 1792904364519,
+      "responseId": "fake",
+      "rawStopReason": "stop",
+      "durationMs": 18,
+      "thinkingLevel": "off"
+    }
+  ]
+}
