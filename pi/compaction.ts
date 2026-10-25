@@ -4,22 +4,29 @@ import {
   type ExtensionAPI,
   estimateTokens,
   type SessionBeforeCompactEvent,
+  type SessionEntry,
   shouldCompact,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { foldSettled, foldView } from "./fold";
-import { foldOn } from "./switch";
+import { foldEnabled, foldOn } from "./switch";
 
 export type CompactionDecision = "cancel" | "fold-summary";
 
-export function foldedRequestTokens(messages: AgentMessage[]): number | undefined {
+function foldedWhenSent(branch: readonly SessionEntry[], measured: AgentMessage): boolean {
+  const at = branch.findIndex(entry => entry.type === "message" && entry.message.timestamp === measured.timestamp && entry.message.role === measured.role);
+  return foldEnabled(at < 0 ? branch : branch.slice(0, at));
+}
+
+export function foldedRequestTokens(messages: AgentMessage[], branch: readonly SessionEntry[]): number | undefined {
   const last = messages.findLastIndex(
     message =>
       message.role === "assistant" && message.stopReason !== "aborted" && message.stopReason !== "error" && calculateContextTokens(message.usage) > 0,
   );
   const measured = messages[last];
   if (measured?.role !== "assistant") return undefined;
-  const sent = foldView(messages.slice(0, last + 1)).reduce((sum, message) => sum + estimateTokens(message), 0);
+  const prefix = messages.slice(0, last + 1);
+  const sent = (foldedWhenSent(branch, measured) ? foldView(prefix) : prefix).reduce((sum, message) => sum + estimateTokens(message), 0);
   const overhead = Math.max(0, calculateContextTokens(measured.usage) - sent);
   return foldSettled(messages).reduce((sum, message) => sum + estimateTokens(message), overhead);
 }
@@ -40,7 +47,7 @@ export function registerCompactionGate(pi: ExtensionAPI) {
       const model = ctx.model;
       if (!model) return undefined;
       const { preparation } = event;
-      const tokens = foldedRequestTokens(ctx.sessionManager.buildSessionProjection().messages);
+      const tokens = foldedRequestTokens(ctx.sessionManager.buildSessionProjection().messages, ctx.sessionManager.getBranch());
       if (decideCompaction(event.reason, tokens, model.contextWindow, preparation.settings) === "cancel") return { cancel: true };
       const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
       if (!auth.ok) return undefined;
