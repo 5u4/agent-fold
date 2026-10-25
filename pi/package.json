@@ -17,9 +17,11 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "eval": "bun test --max-concurrency=4 ./evals/behavior.eval.ts"
   },
   "devDependencies": {
+    "@agent-fold/evals": "*",
     "@earendil-works/pi-agent-core": "1.4.0",
     "@earendil-works/pi-ai": "1.4.0",
     "@earendil-works/pi-coding-agent": "1.4.0",
