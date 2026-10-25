@@ -76,10 +76,12 @@ pi remove git:github.com/5u4/agent-fold
 opencode plugin add github:5u4/agent-fold#path:opencode-v2
 ```
 
-Restart opencode to load the plugin.
+The OpenCode service loads the plugin without a restart, so the next turn folds. Restart the TUI to load its `/agent-fold` toasts.
 
 #### Uninstall
 
 ```sh
 opencode plugin remove github:5u4/agent-fold#path:opencode-v2
 ```
+
+Remove with the same spec you installed with. Any other spelling prints `is not configured`.
