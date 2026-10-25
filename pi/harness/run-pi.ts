@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import type { Subprocess } from "bun";
 import { FOLD_DIR, type Scenario, type ScriptStep, type Variant } from "@agent-fold/evals";
 import type { SessionEntry, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
 import { type ChatRequest, type QueuedReply, type Reply, startFakeProvider } from "./fake-provider";
@@ -68,7 +69,9 @@ export async function runTrial<S>(
 ): Promise<{ run: PiRun; state: S }> {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "pi-run-")));
   const cleanup = () => rmSync(root, { recursive: true, force: true });
+  let active: Subprocess | undefined;
   const onSignal = (signal: NodeJS.Signals) => {
+    active?.kill("SIGKILL");
     cleanup();
     process.kill(process.pid, signal);
   };
@@ -97,9 +100,12 @@ export async function runTrial<S>(
       }),
     );
     if (scenario.turns.some(turn => typeof turn === "string")) {
-      const auth = join(agentDir, "auth.json");
-      copyFileSync(join(homedir(), ".pi", "agent", "auth.json"), auth);
-      chmodSync(auth, 0o600);
+      const source = join(process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent"), "auth.json");
+      if (existsSync(source)) {
+        const auth = join(agentDir, "auth.json");
+        copyFileSync(source, auth);
+        chmodSync(auth, 0o600);
+      }
     }
     const extensions = opts.variant === "with-plugin" ? ["-e", PLUGIN, "-e", REQUEST_LOG] : ["-e", REQUEST_LOG];
     const env = { ...process.env, PI_CODING_AGENT_DIR: agentDir, AGENT_FOLD_HOME: foldHome, FOLD_EVAL_REQUESTS: requestsFile };
@@ -143,11 +149,13 @@ export async function runTrial<S>(
         prompt,
       ];
       const proc = Bun.spawn(["pi", ...args], { cwd: workdir, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+      active = proc;
       const [stdout, stderr, exitCode] = await Promise.all([
         new Response(proc.stdout).text(),
         new Response(proc.stderr).text(),
         proc.exited,
       ]);
+      active = undefined;
       if (scriptError) throw scriptError;
       if (exitCode !== 0) throw new Error(`pi exited ${exitCode} on turn ${index + 1}: ${stderr}`);
       const reply = stdout.trim();
