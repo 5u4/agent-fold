@@ -69,3 +69,19 @@ Restart pi or run `/reload` to load the extension.
 ```sh
 pi remove git:github.com/5u4/agent-fold
 ```
+
+### OpenCode v2
+
+```sh
+opencode plugin add github:5u4/agent-fold#path:opencode-v2
+```
+
+The OpenCode service loads the plugin without a restart, so the next turn folds. A TUI started after the install shows the `/agent-fold` toasts.
+
+#### Uninstall
+
+```sh
+opencode plugin remove github:5u4/agent-fold#path:opencode-v2
+```
+
+Remove with the same spec you installed with. Any other spelling prints `is not configured`, exits 0, and leaves the plugin installed.

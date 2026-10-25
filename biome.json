@@ -41,7 +41,11 @@
                       "**/pi",
                       "**/pi/**",
                       "@agent-fold/pi",
-                      "@agent-fold/pi/**"
+                      "@agent-fold/pi/**",
+                      "**/opencode-v2",
+                      "**/opencode-v2/**",
+                      "@agent-fold/opencode-v2",
+                      "@agent-fold/opencode-v2/**"
                     ],
                     "message": "evals/ never imports an agent directory."
                   }
