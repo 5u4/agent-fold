@@ -1,5 +1,7 @@
 export type Reply = ({ text: string } | { toolCall: { name: string; arguments: Record<string, unknown> } }) & { inputTokens?: number };
 
+export type QueuedReply = Reply | ((request: ChatRequest) => Reply);
+
 export type ChatMessage = {
   role: string;
   content?: string | { type: string; text?: string }[] | null;
@@ -11,7 +13,7 @@ export type ChatRequest = { model: string; messages: ChatMessage[] };
 export type FakeProvider = {
   baseUrl: string;
   requests: ChatRequest[];
-  enqueue(...replies: Reply[]): void;
+  enqueue(...replies: QueuedReply[]): void;
   stop(): void;
 };
 
@@ -41,14 +43,21 @@ function sse(reply: Reply, call: number): string {
 }
 
 export function startFakeProvider(): FakeProvider {
-  const queue: Reply[] = [];
+  const queue: QueuedReply[] = [];
   const requests: ChatRequest[] = [];
   const server = Bun.serve({
     port: 0,
     async fetch(request) {
-      requests.push((await request.json()) as ChatRequest);
-      const reply = queue.shift();
-      if (!reply) return new Response(`no scripted reply for request ${requests.length}`, { status: 500 });
+      const body = (await request.json()) as ChatRequest;
+      requests.push(body);
+      const next = queue.shift();
+      if (!next) return new Response(`no scripted reply for request ${requests.length}`, { status: 500 });
+      let reply: Reply;
+      try {
+        reply = typeof next === "function" ? next(body) : next;
+      } catch (error) {
+        return new Response(String(error), { status: 500 });
+      }
       return new Response(sse(reply, requests.length), { headers: { "content-type": "text/event-stream" } });
     },
   });
