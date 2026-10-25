@@ -1,0 +1,25 @@
+{
+  "name": "@agent-fold/opencode-v2",
+  "private": true,
+  "description": "Folds each finished OpenCode run to the user's messages and the final reply, so the main context stays a clean thread of decisions.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Sen Hung Wong",
+  "exports": {
+    "./server": "./index.ts",
+    "./tui": "./tui.ts"
+  },
+  "files": [
+    "*.ts",
+    "context"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@opencode/plugin": "2.1.4",
+    "bun-types": "1.3.14",
+    "typescript": "5.9.3"
+  }
+}
