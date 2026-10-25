@@ -15,26 +15,28 @@ function keepNothingRecent() {
   writeFileSync(join(sandbox.agentDir, "settings.json"), JSON.stringify({ compaction: { keepRecentTokens: 1 } }));
 }
 
-async function overThreshold(extensions?: string[]) {
+const bigOutput = { toolCall: { name: "bash", arguments: { command: "head -c 40000 /dev/zero | tr '\\0' x; echo NONCE-tool" } } };
+
+async function overThreshold(reportedTokens: number, extensions?: string[]) {
   keepNothingRecent();
-  sandbox.provider.enqueue(
-    { toolCall: { name: "bash", arguments: { command: "echo NONCE-tool" } } },
-    { text: "done 1", inputTokens: 90_000 },
-    { text: "pi summary" },
-    { text: "pi summary" },
-  );
+  sandbox.provider.enqueue(...Array(8).fill(bigOutput), { text: "done 1", inputTokens: reportedTokens }, { text: "pi summary" }, { text: "pi summary" });
   expect((await sandbox.print(["q1"], { extensions })).exitCode).toBe(0);
 }
 
-test("threshold compaction is cancelled while the folded view stays under the threshold", async () => {
-  await overThreshold();
-  expect(sandbox.provider.requests).toHaveLength(2);
+test("threshold compaction is cancelled when the folded request, overhead included, fits under the threshold", async () => {
+  await overThreshold(90_000);
+  expect(sandbox.provider.requests).toHaveLength(9);
   expect(compactions()).toEqual([]);
 }, 60_000);
 
+test("threshold compaction proceeds when request overhead alone keeps the folded request over the threshold", async () => {
+  await overThreshold(170_000);
+  expect(compactions()).toHaveLength(1);
+}, 60_000);
+
 test("without the plugin, the same session compacts at the threshold", async () => {
-  await overThreshold([]);
-  expect(sandbox.provider.requests.length).toBeGreaterThan(2);
+  await overThreshold(90_000, []);
+  expect(sandbox.provider.requests.length).toBeGreaterThan(9);
   expect(compactions()).toHaveLength(1);
 }, 60_000);
 
