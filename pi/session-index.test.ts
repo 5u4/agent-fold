@@ -66,23 +66,30 @@ describe("capIndex follows pi's read limits", () => {
     expect(capIndex(text)).toBe(text);
   });
 
-  test("cuts at the line limit and names the next line", () => {
-    const text = `${lines(DEFAULT_MAX_LINES + 1).join("\n")}\n`;
-    expect(capIndex(text)).toBe(
-      `${lines(DEFAULT_MAX_LINES).join("\n")}\n[INDEX.md continues at line ${DEFAULT_MAX_LINES + 1}. Read it from that line for the rest.]`,
+  test("drops the first lines past the line limit", () => {
+    const all = lines(DEFAULT_MAX_LINES + 1);
+    expect(capIndex(`${all.join("\n")}\n`)).toBe(
+      `[INDEX.md lines 1 to 1 omitted. Read it from line 1 when you need earlier entries.]\n${all.slice(1).join("\n")}\n`,
     );
   });
 
-  test("cuts at the byte limit before the line limit", () => {
+  test("keeps the last lines that fit the byte limit before the line limit", () => {
     const width = Math.floor(DEFAULT_MAX_BYTES / 2.5);
-    expect(capIndex(lines(3, width).join("\n"))).toBe(
-      `${lines(2, width).join("\n")}\n[INDEX.md continues at line 3. Read it from that line for the rest.]`,
+    const all = lines(3, width);
+    expect(capIndex(all.join("\n"))).toBe(
+      `[INDEX.md lines 1 to 1 omitted. Read it from line 1 when you need earlier entries.]\n${all.slice(1).join("\n")}\n`,
     );
   });
 
-  test("keeps nothing when the first line exceeds the byte limit", () => {
-    expect(capIndex(`${"x".repeat(DEFAULT_MAX_BYTES + 1)}\nshort\n`)).toBe(
-      "[INDEX.md continues at line 1. Read it from that line for the rest.]",
+  test("keeps every short line after a huge first line", () => {
+    expect(capIndex(`${"x".repeat(DEFAULT_MAX_BYTES + 1)}\na\nb\n`)).toBe(
+      "[INDEX.md lines 1 to 1 omitted. Read it from line 1 when you need earlier entries.]\na\nb\n",
+    );
+  });
+
+  test("keeps only the hint when the last line exceeds the byte limit", () => {
+    expect(capIndex(`short\n${"x".repeat(DEFAULT_MAX_BYTES + 1)}\n`)).toBe(
+      "[INDEX.md lines 1 to 2 omitted. Read it from line 1 when you need earlier entries.]",
     );
   });
 });
