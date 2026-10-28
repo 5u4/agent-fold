@@ -125,17 +125,19 @@ describe("capIndex", () => {
     expect(capIndex(text)).toBe(text);
   });
 
-  test("cuts at the line cap and names the next line", () => {
+  const note = (omitted: number) => `[INDEX.md lines 1 to ${omitted} omitted. Read it from line 1 when you need earlier entries.]`;
+
+  test("keeps the last 300 lines and names the omitted head", () => {
     const text = `${lines(301).join("\n")}\n`;
-    expect(capIndex(text)).toBe(`${lines(300).join("\n")}\n[INDEX.md continues at line 301. Read it from that line for the rest.]`);
+    expect(capIndex(text)).toBe(`${note(1)}\n${lines(301).slice(1).join("\n")}\n`);
   });
 
   test("cuts at the byte cap before the line cap", () => {
     const text = lines(3, 60000).join("\n");
-    expect(capIndex(text)).toBe(`${lines(2, 60000).join("\n")}\n[INDEX.md continues at line 3. Read it from that line for the rest.]`);
+    expect(capIndex(text)).toBe(`${note(1)}\n${lines(3, 60000).slice(1).join("\n")}\n`);
   });
 
-  test("keeps nothing when the first line exceeds the byte cap", () => {
-    expect(capIndex(`${"x".repeat(153601)}\nshort\n`)).toBe("[INDEX.md continues at line 1. Read it from that line for the rest.]");
+  test("keeps nothing when the last line exceeds the byte cap", () => {
+    expect(capIndex(`short\n${"x".repeat(153601)}\n`)).toBe(note(2));
   });
 });
