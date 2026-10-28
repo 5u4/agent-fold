@@ -5,7 +5,7 @@
     {
       "name": "agent-fold",
       "source": "./copilot",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Folds each finished GitHub Copilot CLI run to the user's message and the final reply, so the main context stays a clean thread of decisions."
     }
   ]
