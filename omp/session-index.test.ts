@@ -140,4 +140,9 @@ describe("capIndex", () => {
   test("keeps nothing when the last line exceeds the byte cap", () => {
     expect(capIndex(`short\n${"x".repeat(153601)}\n`)).toBe(note(2));
   });
+
+  test("keeps every short line after an oversized first line", () => {
+    const text = `${"x".repeat(153601)}\nshort1\nshort2\n`;
+    expect(capIndex(text)).toBe(`${note(1)}\nshort1\nshort2\n`);
+  });
 });
