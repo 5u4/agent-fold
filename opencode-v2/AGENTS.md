@@ -23,7 +23,7 @@ A folded run keeps every user message. Between consecutive user messages it keep
 ## Fold dir
 The index and notes live in `~/.agent-fold/<project-slug>/opencode-v2/<session-start>-<session-id>/`, with the session start as UTC `yyyyMMddHHmmss`. `AGENT_FOLD_HOME` overrides the `~/.agent-fold` root. `fold-dir.ts` copies pi's project slug and applies it to `ctx.location.project.canonical`. The hook appends `context/fold.md` with `{foldDir}` filled in to the system prompt.
 
-The hook reads `INDEX.md` when the in-flight run's first transcript entry changes, which is once per run, and again after auto compaction restarts the transcript mid-run. It keeps at most 2000 lines and 50 KiB, as pi does, and inserts the snapshot as a user message right after the in-flight run's first user message. After auto compaction that message is the compaction checkpoint.
+The hook reads `INDEX.md` when the in-flight run's first transcript entry changes, which is once per run, and again after auto compaction restarts the transcript mid-run. It keeps at most 2000 lines and 50 KiB, as pi does. Past either limit it keeps the last lines that fit and leads with a note that lines 1 to N were omitted. It inserts the snapshot as a user message right after the in-flight run's first user message. After auto compaction that message is the compaction checkpoint.
 
 The hook fails open. Creating the fold dir may throw, and reading `INDEX.md` swallows only `ENOENT`. Any throw leaves the request untouched. The hook never writes the session.
 
