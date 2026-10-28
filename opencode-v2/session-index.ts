@@ -11,16 +11,18 @@ export function capIndex(text: string): string {
   if (lines.length <= MAX_LINES && Buffer.byteLength(text) <= MAX_BYTES) return text;
   let kept = 0;
   let bytes = 0;
-  while (kept < MAX_LINES) {
-    const next = bytes + Buffer.byteLength(lines[kept]) + 1;
+  while (kept < MAX_LINES && kept < lines.length) {
+    const next = bytes + Buffer.byteLength(lines[lines.length - 1 - kept]) + 1;
     if (next > MAX_BYTES) break;
     bytes = next;
     kept++;
   }
-  return `${lines
-    .slice(0, kept)
+  const hint = `[INDEX.md lines 1 to ${lines.length - kept} omitted. Read it from line 1 when you need earlier entries.]`;
+  if (kept === 0) return hint;
+  return `${hint}\n${lines
+    .slice(lines.length - kept)
     .map(line => `${line}\n`)
-    .join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
+    .join("")}`;
 }
 
 export function indexMessage(dir: string, text: string): LoopMessage {
