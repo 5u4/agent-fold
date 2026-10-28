@@ -19,15 +19,18 @@ export function capIndex(text: string): string {
   let kept = 0;
   let bytes = 0;
   while (kept < INDEX_MAX_LINES) {
-    const next = bytes + Buffer.byteLength(lines[kept]) + 1;
+    const next = bytes + Buffer.byteLength(lines[lines.length - 1 - kept]) + 1;
     if (next > INDEX_MAX_BYTES) break;
     bytes = next;
     kept++;
   }
-  return `${lines
-    .slice(0, kept)
+  const omitted = lines.length - kept;
+  const note = `[INDEX.md lines 1 to ${omitted} omitted. Read it from line 1 when you need earlier entries.]`;
+  if (kept === 0) return note;
+  return `${note}\n${lines
+    .slice(omitted)
     .map(line => `${line}\n`)
-    .join("")}[INDEX.md continues at line ${kept + 1}. Read it from that line for the rest.]`;
+    .join("")}`;
 }
 
 export function withSessionIndex(messages: AgentMessage[], { dir, text }: IndexSnapshot, anchor: number): AgentMessage[] {
